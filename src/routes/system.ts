@@ -1,6 +1,6 @@
 import express from 'express';
 import os from 'os';
-import { PORT } from '../config';
+import { PORT, PUBLIC_URL } from '../config';
 import { getNetworkAddresses, getPrimaryLanIp, generateQrDataUrl } from '../services/networkService';
 
 const router = express.Router();
@@ -9,7 +9,7 @@ router.get('/info', async (_req, res) => {
   try {
     const addresses = getNetworkAddresses();
     const primaryIp = getPrimaryLanIp();
-    const primaryUrl = `http://${primaryIp}:${PORT}`;
+    const primaryUrl = PUBLIC_URL ?? `http://${primaryIp}:${PORT}`;
     const qrDataUrl = await generateQrDataUrl(primaryUrl);
 
     res.json({

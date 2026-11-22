@@ -1,5 +1,6 @@
 import { generateAsciiQr } from '../services/networkService';
 import type { NetworkAddress } from '../services/networkService';
+import { PUBLIC_URL } from '../config';
 
 const colors = {
   reset: '\x1b[0m',
@@ -36,13 +37,17 @@ export function error(msg: string, err?: unknown): void {
 
 export async function printBanner(port: number, addresses: NetworkAddress[], primaryIp: string): Promise<void> {
   const localUrl = `http://localhost:${port}`;
-  const networkUrl = `http://${primaryIp}:${port}`;
+  const networkUrl = PUBLIC_URL ?? `http://${primaryIp}:${port}`;
 
   console.log('');
-  console.log(`  ${colors.bold}Access on this PC:${colors.reset}   ${colors.green}${localUrl}${colors.reset}`);
-  console.log(`  ${colors.bold}Access on Phone/LAN:${colors.reset} ${colors.cyan}${colors.bold}${networkUrl}${colors.reset}`);
+  if (PUBLIC_URL) {
+    console.log(`  ${colors.bold}Public URL:${colors.reset} ${colors.cyan}${colors.bold}${networkUrl}${colors.reset}`);
+  } else {
+    console.log(`  ${colors.bold}Access on this PC:${colors.reset}   ${colors.green}${localUrl}${colors.reset}`);
+    console.log(`  ${colors.bold}Access on Phone/LAN:${colors.reset} ${colors.cyan}${colors.bold}${networkUrl}${colors.reset}`);
+  }
 
-  if (addresses.length > 1) {
+  if (!PUBLIC_URL && addresses.length > 1) {
     console.log(`\n  ${colors.dim}Other Available Network Interfaces:${colors.reset}`);
     addresses.forEach((a) => {
       console.log(`    - ${a.interface}: ${colors.cyan}http://${a.address}:${port}${colors.reset}`);

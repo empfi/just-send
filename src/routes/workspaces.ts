@@ -7,10 +7,32 @@ import { requireSession, authed } from '../middleware/auth';
 import { generateQrDataUrl, getPrimaryLanIp } from '../services/networkService';
 import { isValidPublicKey, normalizeFingerprint } from '../utils/deviceCrypto';
 import { setSessionCookie } from '../utils/sessionCookie';
-import { PORT } from '../config';
+import { PORT, PUBLIC_URL } from '../config';
 import sseService from '../services/sseService';
 
 const router = express.Router();
+
+function firstHeaderValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function isLoopbackHost(host: string): boolean {
+  const hostname = (host.startsWith('[') ? host.slice(1, host.indexOf(']')) : host.split(':')[0]).toLowerCase();
+  return ['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(hostname);
+}
+
+function requestBaseUrl(req: express.Request): string {
+  if (PUBLIC_URL) return PUBLIC_URL;
+
+  const host = firstHeaderValue(req.headers['x-forwarded-host']) ?? req.get('host');
+  if (host && !isLoopbackHost(host)) {
+    const forwardedProto = firstHeaderValue(req.headers['x-forwarded-proto']);
+    const proto = forwardedProto?.split(',')[0].trim() || req.protocol || 'http';
+    return `${proto}://${host}`;
+  }
+
+  return `http://${getPrimaryLanIp()}:${PORT}`;
+}
 
 function requireMaster(action: string) {
   return (req: express.Request, res: express.Response, next: express.NextFunction): void => {
@@ -199,8 +221,7 @@ router.get('/:id/pairing', authLimiter, requireSession, requireMaster('share acc
     }
 
     const pairToken = workspaceService.generatePairingToken(req.params.id);
-    const primaryIp = getPrimaryLanIp();
-    const qrTargetUrl = `http://${primaryIp}:${PORT}/pair?ws=${req.params.id}&token=${pairToken}`;
+    const qrTargetUrl = `${requestBaseUrl(req)}/pair?ws=${req.params.id}&token=${pairToken}`;
     const qrDataUrl = await generateQrDataUrl(qrTargetUrl);
 
     auditService.log('pairing_code_viewed', {
