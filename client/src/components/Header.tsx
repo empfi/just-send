@@ -92,7 +92,7 @@ export function Header({
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {workspace.name}
                         </span>
-                        <span className="ws-badge tabular">{workspace.deviceCount || 1} dev</span>
+                        <span className="ws-badge tabular">{workspace.deviceCount || 1}</span>
                       </button>
                     ))
                   )}
