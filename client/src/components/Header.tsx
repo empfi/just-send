@@ -110,10 +110,6 @@ export function Header({
                   <Icon name="smartphone" className="icon icon-sm" />
                   <span>Devices &amp; audit</span>
                 </button>
-                <button className="dropdown-action-btn" onClick={() => closeThen(onPairDevice)}>
-                  <Icon name="qrcode" className="icon icon-sm" />
-                  <span>Authorize device / code</span>
-                </button>
                 {isMaster && current ? (
                   <>
                     <div className="dropdown-divider" />
