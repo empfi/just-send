@@ -311,16 +311,65 @@ body.app-loading .app-main {
   border-radius: var(--radius-control);
   padding: 6px 16px;
 }
-.code-timer-badge {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--bg-card);
+.pair-tabs {
+  display: flex;
+  gap: var(--space-1);
+  background: var(--bg-deep);
+  padding: 2px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--border-hairline);
-  padding: 4px 8px;
-  border-radius: 12px;
-  min-width: 36px;
+}
+.pair-panels {
+  display: grid;
+}
+.pair-panel {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: 4px;
+  min-width: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.pair-panel.active {
+  visibility: visible;
+  pointer-events: auto;
+}
+.pair-panel-share {
+  align-items: center;
+}
+.pair-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.pair-rotate-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.pair-copy {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.pair-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.pair-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.pair-code-input {
+  font-size: 20px;
+  letter-spacing: 0.25em;
   text-align: center;
+  font-weight: 600;
+}
+.pair-submit {
+  margin-top: 6px;
 }
 
 .brand {
@@ -1232,6 +1281,10 @@ body.app-loading .app-main {
   background: #ffffff;
   border-radius: var(--radius-control);
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 216px;
+  min-height: 216px;
 }
 .qr-img {
   width: 200px;
@@ -1554,6 +1607,10 @@ body.app-loading .app-main {
     max-height: 90vh;
   }
 
+  .qr-card {
+    min-width: 186px;
+    min-height: 186px;
+  }
   .qr-img {
     width: 170px;
     height: 170px;

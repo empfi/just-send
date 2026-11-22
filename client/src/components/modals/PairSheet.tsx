@@ -75,23 +75,11 @@ export function PairSheet({ open, workspaceId, notify, onClose, onAuthorized }: 
     }
   };
 
+  const remaining = Math.max(0, seconds);
+
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title="Authorize device"
-      icon="smartphone"
-    >
-      <div
-        style={{
-          display: 'flex',
-          gap: 'var(--space-1)',
-          background: 'var(--bg-deep)',
-          padding: 2,
-          borderRadius: 'var(--radius-control)',
-          border: '1px solid var(--border-hairline)',
-        }}
-      >
+    <Sheet open={open} onClose={onClose} title="Authorize device" icon="smartphone">
+      <div className="pair-tabs">
         <button
           className={`tab-btn ${tab === 'share' ? 'active' : ''}`}
           style={{ flex: 1, justifyContent: 'center' }}
@@ -108,42 +96,43 @@ export function PairSheet({ open, workspaceId, notify, onClose, onAuthorized }: 
         </button>
       </div>
 
-      {tab === 'share' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-3)', marginTop: 4 }}>
+      <div className="pair-panels">
+        <div
+          className={`pair-panel pair-panel-share ${tab === 'share' ? 'active' : ''}`}
+          aria-hidden={tab !== 'share'}
+        >
           <div className="qr-card">
             {info?.qrCode ? <img className="qr-img" src={info.qrCode} alt="Scan to authorize" /> : null}
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            Or enter this 30-second code on your other device:
+          <div className="pair-hint">Or enter this 30-second code on your other device:</div>
+          <div className="rotating-code-display tabular">{info?.code ?? '------'}</div>
+          <div className="pair-rotate-hint">
+            Rotates automatically in <span className="tabular">{remaining}</span>{' '}
+            {remaining === 1 ? 'second' : 'seconds'}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <div className="rotating-code-display tabular">{info?.code ?? '------'}</div>
-            <div className="code-timer-badge tabular">{Math.max(0, seconds)}s</div>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Rotates automatically every 30 seconds</div>
         </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 4 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+
+        <div
+          className={`pair-panel pair-panel-enter ${tab === 'enter' ? 'active' : ''}`}
+          aria-hidden={tab !== 'enter'}
+        >
+          <div className="pair-copy">
             Enter the 6-digit code shown on your authorized device to permit this device to access the
             workspace.
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
-              6-digit authorization code
-            </label>
+          <div className="pair-field">
+            <label className="pair-label">6-digit authorization code</label>
             <input
               type="text"
-              className="search-input tabular"
+              className="search-input tabular pair-code-input"
               maxLength={6}
               placeholder="000000"
-              style={{ fontSize: 20, letterSpacing: '0.25em', textAlign: 'center', fontWeight: 600 }}
               value={code}
               onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
             />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-            <label style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>This device's name</label>
+          <div className="pair-field">
+            <label className="pair-label">This device's name</label>
             <input
               type="text"
               className="search-input"
@@ -152,11 +141,11 @@ export function PairSheet({ open, workspaceId, notify, onClose, onAuthorized }: 
               onChange={(event) => setDevice(event.target.value)}
             />
           </div>
-          <button className="btn btn-primary" style={{ marginTop: 6 }} onClick={submit} disabled={busy}>
+          <button className="btn btn-primary pair-submit" onClick={submit} disabled={busy}>
             <span>{busy ? 'Authorizing...' : 'Authorize this device'}</span>
           </button>
         </div>
-      )}
+      </div>
     </Sheet>
   );
 }
