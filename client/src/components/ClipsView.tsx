@@ -58,7 +58,6 @@ export function ClipsView({
         <>
           <div className="clips-section-header">
             <span>Snippets</span>
-            <span className="clips-count tabular">{clips.length}</span>
           </div>
           <div className="clips-grid">
             {clips.map((clip) => (
