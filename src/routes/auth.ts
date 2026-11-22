@@ -70,21 +70,6 @@ router.post('/session', strictLimiter, (req, res) => {
     }
     seenNonces.set(nonceKey, Date.now());
 
-    if (!workspaceService.fingerprintKnown(auth.device, fp)) {
-      auditService.log('session_fingerprint_rejected', {
-        workspaceId,
-        deviceId,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        detail: fp.slice(0, 12),
-      });
-      res.status(403).json({
-        success: false,
-        error: 'This browser profile does not match the paired device. Pair this device again.',
-      });
-      return;
-    }
-
     const session = sessionService.create(workspaceId, deviceId, fp);
     setSessionCookie(req, res, session.id);
     auditService.log('session_created', {

@@ -269,10 +269,6 @@ class WorkspaceService {
     return { workspace, device };
   }
 
-  fingerprintKnown(device: DeviceRecord, fingerprint: string): boolean {
-    return (device.fingerprints ?? []).includes(fingerprint);
-  }
-
   getPairingCode(workspaceId: string): { code: string; secondsRemaining: number } | null {
     const workspace = this.workspaces[workspaceId];
     if (!workspace) return null;

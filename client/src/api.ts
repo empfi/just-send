@@ -101,11 +101,18 @@ function jsonInit(body: unknown, method = 'POST'): RequestInit {
   };
 }
 
+function signalUnauthorized(): void {
+  window.dispatchEvent(new Event('just-send:unauthorized'));
+}
+
 async function request<T>(url: string, init: RequestInit = {}, allowRetry = true): Promise<ApiResponse<T>> {
   const res = await fetch(url, { credentials: 'same-origin', ...init });
-  if (res.status === 401 && allowRetry) {
-    const refreshed = await ensureSession(undefined, true);
-    if (refreshed) return request<T>(url, init, false);
+  if (res.status === 401) {
+    if (allowRetry) {
+      const refreshed = await ensureSession(undefined, true);
+      if (refreshed) return request<T>(url, init, false);
+    }
+    signalUnauthorized();
   }
   return (await res.json()) as ApiResponse<T>;
 }
@@ -364,6 +371,7 @@ export const api = {
     if (res.status === 401 && (await ensureSession(undefined, true))) {
       res = await fetch(url, { credentials: 'same-origin' });
     }
+    if (res.status === 401) signalUnauthorized();
     const json = (await res.json()) as ApiResponse<Item[]>;
     return { ...json, breadcrumbs: json.breadcrumbs ?? [] };
   },

@@ -11,9 +11,18 @@ interface Props {
   onAuthorized: (result: AuthorizationResult) => void;
   onCreateWorkspace: () => void;
   onRecover: () => void;
+  dismissible?: boolean;
 }
 
-export function UnauthorizedSheet({ open, notify, onClose, onAuthorized, onCreateWorkspace, onRecover }: Props) {
+export function UnauthorizedSheet({
+  open,
+  notify,
+  onClose,
+  onAuthorized,
+  onCreateWorkspace,
+  onRecover,
+  dismissible = true,
+}: Props) {
   const [code, setCode] = useState('');
   const [device, setDevice] = useState(defaultDeviceName());
   const [busy, setBusy] = useState(false);
@@ -45,6 +54,7 @@ export function UnauthorizedSheet({ open, notify, onClose, onAuthorized, onCreat
       onClose={onClose}
       title="Connect this device"
       icon="lock"
+      dismissible={dismissible}
     >
       <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
         This device is not authorized for any workspace yet. Enter the 6-digit code shown on your authorized

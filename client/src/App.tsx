@@ -100,6 +100,8 @@ export default function App() {
   const [hasWorkspaces, setHasWorkspaces] = useState(false);
   const [currentWsId, setCurrentWsId] = useState<string | null>(() => api.activeWorkspaceId());
   const [isMaster, setIsMaster] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('date-desc');
   const [view, setView] = useState<ViewMode>('grid');
@@ -123,6 +125,20 @@ export default function App() {
     const id = Date.now() + Math.random();
     setToasts((current) => [...current, { id, message, kind }]);
     window.setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 2800);
+  }, []);
+
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setAuthenticated(false);
+      setCurrentWsId(null);
+      setModal((current) =>
+        current === 'qr-scan' || current === 'create-workspace' || current === 'recover'
+          ? current
+          : 'unauthorized'
+      );
+    };
+    window.addEventListener('just-send:unauthorized', onUnauthorized);
+    return () => window.removeEventListener('just-send:unauthorized', onUnauthorized);
   }, []);
 
   useEffect(() => {
@@ -196,7 +212,14 @@ export default function App() {
     setWorkspacesLoading(true);
     const res = await api.listWorkspaces().catch(() => null);
     setWorkspacesLoading(false);
-    if (!res || !res.success) return;
+    if (!res || !res.success) {
+      if (res?.error === 'Not authenticated') {
+        setAuthenticated(false);
+        setCurrentWsId(null);
+        setModal((current) => (current === 'qr-scan' ? current : 'unauthorized'));
+      }
+      return;
+    }
     const list = [...(res.data ?? [])];
     for (const known of api.knownWorkspaces()) {
       if (!list.some((workspace) => workspace.id === known.id)) list.push(known);
@@ -223,11 +246,27 @@ export default function App() {
 
   useEffect(() => {
     void (async () => {
-      const boot = await api.bootstrap();
-      setIsMaster(boot.isMaster);
-      await loadWorkspaces();
+      try {
+        const boot = await api.bootstrap();
+        setIsMaster(boot.isMaster);
+        if (boot.workspaceId) {
+          setAuthenticated(true);
+          setCurrentWsId(boot.workspaceId);
+          await loadWorkspaces();
+        } else {
+          setAuthenticated(false);
+          setCurrentWsId(null);
+          setModal((current) => (current === 'qr-scan' ? current : 'unauthorized'));
+        }
+      } catch {
+        setAuthenticated(false);
+        setCurrentWsId(null);
+        setModal((current) => (current === 'qr-scan' ? current : 'unauthorized'));
+      } finally {
+        setAuthChecked(true);
+      }
     })();
-  }, [loadWorkspaces, notify]);
+  }, [loadWorkspaces]);
 
   useEffect(() => {
     const currentFolder = tab === 'files' && folderId ? breadcrumbs.find((crumb) => crumb.id === folderId) : null;
@@ -235,7 +274,7 @@ export default function App() {
   }, [tab, folderId, breadcrumbs]);
 
   useEffect(() => {
-    if (tab !== 'files' || !currentWsId) {
+    if (!authenticated || tab !== 'files' || !currentWsId) {
       setFilesLoading(false);
       return undefined;
     }
@@ -249,7 +288,7 @@ export default function App() {
         if (res.success) {
           setItems(res.data ?? []);
           setBreadcrumbs(res.breadcrumbs ?? []);
-        } else if (res.error) {
+        } else if (res.error && res.error !== 'Not authenticated') {
           notify(res.error, 'error');
         }
       })
@@ -262,10 +301,10 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [tab, currentWsId, folderId, search, sort, reloadTick, notify]);
+  }, [authenticated, tab, currentWsId, folderId, search, sort, reloadTick, notify]);
 
   useEffect(() => {
-    if (!currentWsId) {
+    if (!authenticated || !currentWsId) {
       setClipsLoading(false);
       return undefined;
     }
@@ -283,7 +322,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentWsId, reloadTick]);
+  }, [authenticated, currentWsId, reloadTick]);
 
   useEffect(() => {
     if (!routeFileId || items.length === 0) return;
@@ -295,7 +334,7 @@ export default function App() {
   }, [routeFileId, items]);
 
   useEffect(() => {
-    if (!currentWsId) return undefined;
+    if (!authenticated || !currentWsId) return undefined;
     const source = new EventSource('/api/events');
     source.onmessage = (event) => {
       try {
@@ -319,7 +358,7 @@ export default function App() {
     };
     source.onerror = () => undefined;
     return () => source.close();
-  }, [loadWorkspaces, currentWsId]);
+  }, [authenticated, loadWorkspaces, currentWsId]);
 
   const clearUpload = useCallback(() => {
     if (previewUrlRef.current) {
@@ -505,6 +544,7 @@ export default function App() {
 
   const handleCreated = async (result: CreateWorkspaceResult) => {
     api.setActiveWorkspace(result.workspace.id);
+    setAuthenticated(true);
     setIsMaster(result.isMaster);
     setKeyphrase(result.keyphrase);
     setModal('keyphrase');
@@ -514,6 +554,7 @@ export default function App() {
 
   const handleAuthorized = async (result: AuthorizationResult) => {
     api.setActiveWorkspace(result.workspace.id);
+    setAuthenticated(true);
     setIsMaster(result.isMaster);
     setModal(null);
     setQrScan(null);
@@ -525,12 +566,15 @@ export default function App() {
   };
 
   const selectWorkspace = async (id: string) => {
-    const authenticated = await api.ensureSession(id);
-    if (!authenticated) {
+    const sessionReady = await api.ensureSession(id);
+    if (!sessionReady) {
+      setAuthenticated(false);
+      setModal('unauthorized');
       notify('Could not authenticate this workspace. Pair it again.', 'error');
       return;
     }
     api.setActiveWorkspace(id);
+    setAuthenticated(true);
     setIsMaster(api.isMaster());
     setCurrentWsId(id);
     setFolderId(null);
@@ -589,6 +633,12 @@ export default function App() {
   };
 
   const createDismissible = hasWorkspaces || workspaces.length > 0;
+  const forceConnect =
+    authChecked &&
+    !authenticated &&
+    modal !== 'qr-scan' &&
+    modal !== 'create-workspace' &&
+    modal !== 'recover';
 
   return (
     <>
@@ -610,7 +660,8 @@ export default function App() {
       />
 
       <main className="app-main">
-        {tab === 'files' ? (
+        {authenticated ? (
+          tab === 'files' ? (
           <FilesView
             items={items}
             loading={filesLoading && items.length === 0}
@@ -644,22 +695,27 @@ export default function App() {
             onBatchDelete={batchDelete}
             onContextMenu={openContext}
           />
-        ) : (
-          <ClipsView
-            clips={clips}
-            loading={clipsLoading && clips.length === 0}
-            onAdd={addClip}
-            onDelete={deleteClip}
-            onCopied={(ok) => notify(ok ? 'Snippet copied' : 'Unable to copy snippet', ok ? 'success' : 'error')}
-          />
-        )}
+          ) : (
+            <ClipsView
+              clips={clips}
+              loading={clipsLoading && clips.length === 0}
+              onAdd={addClip}
+              onDelete={deleteClip}
+              onCopied={(ok) => notify(ok ? 'Snippet copied' : 'Unable to copy snippet', ok ? 'success' : 'error')}
+            />
+          )
+        ) : null}
       </main>
 
-      <MobileDock tab={tab} onTabChange={changeTab} onUpload={openPicker} onConnect={openPair} />
+      {authenticated ? (
+        <MobileDock tab={tab} onTabChange={changeTab} onUpload={openPicker} onConnect={openPair} />
+      ) : null}
 
-      <button type="button" className="upload-fab" onClick={openPicker} aria-label="Upload files" title="Upload files">
-        <Icon name="upload" className="icon" style={{ width: 20, height: 20 }} />
-      </button>
+      {authenticated ? (
+        <button type="button" className="upload-fab" onClick={openPicker} aria-label="Upload files" title="Upload files">
+          <Icon name="upload" className="icon" style={{ width: 20, height: 20 }} />
+        </button>
+      ) : null}
 
       <input
         ref={fileInputRef}
@@ -681,15 +737,21 @@ export default function App() {
 
       <CreateWorkspaceSheet
         open={modal === 'create-workspace'}
-        dismissible={createDismissible}
+        dismissible={authenticated ? createDismissible : true}
         notify={notify}
-        onClose={() => setModal(null)}
+        onClose={() => setModal(authenticated ? null : 'unauthorized')}
         onCreated={handleCreated}
       />
       <KeyphraseSheet open={modal === 'keyphrase'} keyphrase={keyphrase} notify={notify} onClose={() => setModal(null)} />
-      <RecoverSheet open={modal === 'recover'} notify={notify} onClose={() => setModal(null)} onAuthorized={handleAuthorized} />
+      <RecoverSheet
+        open={modal === 'recover'}
+        notify={notify}
+        onClose={() => setModal(authenticated ? null : 'unauthorized')}
+        onAuthorized={handleAuthorized}
+      />
       <UnauthorizedSheet
-        open={modal === 'unauthorized'}
+        open={modal === 'unauthorized' || forceConnect}
+        dismissible={authenticated}
         notify={notify}
         onClose={() => setModal(null)}
         onAuthorized={handleAuthorized}
@@ -697,7 +759,7 @@ export default function App() {
         onRecover={() => setModal('recover')}
       />
       <PairSheet
-        open={modal === 'pair'}
+        open={authenticated && modal === 'pair'}
         workspaceId={currentWsId}
         notify={notify}
         onClose={() => setModal(null)}
@@ -715,7 +777,7 @@ export default function App() {
       ) : null}
       <PreviewSheet open={modal === 'preview'} item={previewItem} onClose={closePreview} />
       <DevicesSheet
-        open={modal === 'devices'}
+        open={authenticated && modal === 'devices'}
         workspaceId={currentWsId}
         isMaster={isMaster}
         notify={notify}
