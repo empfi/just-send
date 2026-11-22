@@ -21,7 +21,7 @@ npm run build
 npm start
 ```
 
-Open http://localhost:3456. The server listens on all interfaces, and the Connect dialog generates pairing links from the address you opened.
+Open http://localhost:3456. The server listens on all interfaces. The Connect dialog and startup QR use the public address the app is reachable on, falling back to the LAN address.
 
 ## Development
 
@@ -39,6 +39,8 @@ Copy `.env.example` to `.env` to change the port, host, or upload limit.
 | --- | --- | --- |
 | `PORT` | `3456` | HTTP port |
 | `SERVER_PORT` | unset | Hosting-assigned port; takes precedence over `PORT` |
+| `SERVER_IP` | unset | Host-provided public address for the startup QR |
+| `PUBLIC_URL` | auto | Optional public origin override for the startup QR |
 | `HOST` | `0.0.0.0` | Bind address |
 | `MAX_FILE_SIZE_BYTES` | 50 GB | Per-file upload limit |
 

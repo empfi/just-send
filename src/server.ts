@@ -63,8 +63,8 @@ app.use((req, res, next) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, HOST, () => {
-  printBanner(PORT, HOST);
+app.listen(PORT, HOST, async () => {
+  await printBanner(PORT, HOST);
 });
 
 export default app;

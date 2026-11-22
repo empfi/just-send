@@ -6,9 +6,28 @@ function firstHeaderValue(value: string | string[] | undefined): string | undefi
   return Array.isArray(value) ? value[0] : value;
 }
 
+const LOOPBACK_ADDRESSES = new Set(['localhost', '127.0.0.1', '::1', '0.0.0.0']);
+
 function isLoopbackHost(host: string): boolean {
   const hostname = (host.startsWith('[') ? host.slice(1, host.indexOf(']')) : host.split(':')[0]).toLowerCase();
-  return ['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(hostname);
+  return LOOPBACK_ADDRESSES.has(hostname);
+}
+
+export function getAdvertisedOrigin(): string | null {
+  const explicit = process.env.PUBLIC_URL?.trim();
+  if (explicit) {
+    try {
+      const url = new URL(explicit);
+      if (url.protocol === 'http:' || url.protocol === 'https:') return url.origin;
+    } catch {
+      // Fall through to host-provided addresses.
+    }
+  }
+
+  const serverIp = process.env.SERVER_IP?.trim().replace(/^\[|\]$/g, '');
+  if (!serverIp || LOOPBACK_ADDRESSES.has(serverIp)) return null;
+  const serverPort = process.env.SERVER_PORT?.trim() || String(PORT);
+  return `http://${serverIp.includes(':') ? `[${serverIp}]` : serverIp}:${serverPort}`;
 }
 
 export function getRequestOrigin(req: Request): string {
@@ -19,5 +38,5 @@ export function getRequestOrigin(req: Request): string {
     return `${proto}://${host}`;
   }
 
-  return `http://${getPrimaryLanIp()}:${PORT}`;
+  return getAdvertisedOrigin() ?? `http://${getPrimaryLanIp()}:${PORT}`;
 }

@@ -1,3 +1,5 @@
+import { generateAsciiQr, getPrimaryLanIp } from '../services/networkService';
+import { getAdvertisedOrigin } from './requestOrigin';
 
 const colors = {
   reset: '\x1b[0m',
@@ -32,11 +34,19 @@ export function error(msg: string, err?: unknown): void {
   console.error(`${colors.gray}[${time}]${colors.reset} \x1b[31m[ERROR]\x1b[0m ${msg}`, err ?? '');
 }
 
-export function printBanner(port: number, host: string): void {
+export async function printBanner(port: number, host: string): Promise<void> {
+  const origin = getAdvertisedOrigin() ?? `http://${getPrimaryLanIp()}:${port}`;
+
   console.log('');
   console.log(`  ${colors.bold}Listening on:${colors.reset} ${colors.cyan}${host}:${port}${colors.reset}`);
   console.log(`  ${colors.bold}Local URL:${colors.reset}    ${colors.green}http://localhost:${port}${colors.reset}`);
-  console.log(`  ${colors.dim}Pair a phone from Connect inside the app.${colors.reset}`);
+  console.log(`  ${colors.bold}Phone/LAN URL:${colors.reset} ${colors.cyan}${origin}${colors.reset}`);
+
+  console.log('\n  Scan to open the app on another device:');
+  const asciiQr = await generateAsciiQr(origin);
+  if (asciiQr) {
+    console.log(asciiQr);
+  }
 }
 
 export { colors };
