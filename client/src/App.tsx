@@ -655,14 +655,7 @@ export default function App() {
         )}
       </main>
 
-      <MobileDock
-        tab={tab}
-        onTabChange={changeTab}
-        onUpload={openPicker}
-        onConnect={openPair}
-        onOpenDevices={openDevices}
-        isMaster={isMaster}
-      />
+      <MobileDock tab={tab} onTabChange={changeTab} onUpload={openPicker} onConnect={openPair} />
 
       <button type="button" className="upload-fab" onClick={openPicker} aria-label="Upload files" title="Upload files">
         <Icon name="upload" className="icon" style={{ width: 20, height: 20 }} />
