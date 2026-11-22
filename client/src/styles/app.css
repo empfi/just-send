@@ -1323,6 +1323,12 @@ body.app-loading .app-main {
   .header-right {
     display: none;
   }
+  .header-right.header-right-master {
+    display: flex;
+  }
+  .header-right .header-pair-btn {
+    display: none;
+  }
 
   
   .toolbar {

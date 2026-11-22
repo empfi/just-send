@@ -136,12 +136,16 @@ export function Header({
           </button>
         </div>
 
-        <div className="header-right">
+        <div className={`header-right ${isMaster ? 'header-right-master' : ''}`}>
           <button className="btn btn-secondary btn-icon" onClick={onOpenDevices} title="Devices & audit">
             <Icon name="smartphone" className="icon icon-sm" />
           </button>
           {isMaster ? (
-            <button className="btn btn-secondary btn-icon" onClick={onPairDevice} title="Pair device with QR code">
+            <button
+              className="btn btn-secondary btn-icon header-pair-btn"
+              onClick={onPairDevice}
+              title="Pair device with QR code"
+            >
               <Icon name="qrcode" className="icon icon-sm" />
             </button>
           ) : null}
