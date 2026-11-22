@@ -60,10 +60,6 @@ class SessionService {
       if (session.workspaceId === workspaceId) this.sessions.delete(id);
     }
   }
-
-  count(): number {
-    return this.sessions.size;
-  }
 }
 
 export default new SessionService();

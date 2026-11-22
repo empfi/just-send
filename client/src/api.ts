@@ -7,8 +7,6 @@ import type {
   InstanceConfig,
   Item,
   PairingInfo,
-  ServerLogEntry,
-  SystemInfo,
   Workspace,
 } from './types';
 import {
@@ -469,20 +467,8 @@ export const api = {
     return request<Item>(`/api/files/${id}/rename`, jsonInit({ name }, 'PATCH'));
   },
 
-  async getStats(): Promise<ApiResponse<{ totalFiles: number; totalFolders: number; totalSizeBytes: number; formattedTotalSize: string }>> {
-    return request('/api/stats');
-  },
-
-  async getSystemInfo(): Promise<ApiResponse<SystemInfo>> {
-    return request<SystemInfo>('/api/system/info');
-  },
-
   async getInstanceConfig(): Promise<ApiResponse<InstanceConfig>> {
     return request<InstanceConfig>('/api/system/config');
-  },
-
-  async getServerLogs(limit = 200): Promise<ApiResponse<ServerLogEntry[]>> {
-    return request<ServerLogEntry[]>(`/api/system/logs?limit=${limit}`);
   },
 
   async getClips(): Promise<ApiResponse<Clip[]>> {
@@ -497,5 +483,3 @@ export const api = {
     return request<null>(`/api/clips/${id}`, { method: 'DELETE', credentials: 'same-origin' });
   },
 };
-
-export type Api = typeof api;

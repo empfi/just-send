@@ -10,7 +10,6 @@ A fast, private file server for your local network. Move files and text between 
 - Shared text drop for links, snippets, and codes
 - Live updates across connected devices
 - Workspace recovery with a 12-word phrase
-- Master-only server logs with level filters
 - Configurable instance name, logo, and accent color
 
 ## Quick start
@@ -35,7 +34,7 @@ The API runs on port 3456 and Vite serves the client on http://localhost:5173.
 
 ## Configuration
 
-Copy `.env.example` to `.env` to change the port, host, or upload limit.
+Copy `.env.example` to `.env` and restart the server to change these values. Variables already set by the host take precedence over the file.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -45,24 +44,26 @@ Copy `.env.example` to `.env` to change the port, host, or upload limit.
 | `PUBLIC_URL` | auto | Optional public origin override for the startup QR |
 | `HOST` | `0.0.0.0` | Bind address |
 | `MAX_FILE_SIZE_BYTES` | 50 GB | Per-file upload limit |
+| `LOG_LEVELS` | `error` | Comma-separated console log levels: `info`, `warn`, `error` |
+| `INSTANCE_NAME` | `Just Send` | Name in the header and page title |
+| `INSTANCE_LOGO` | bundled mark | Logo path relative to the project root |
+| `INSTANCE_ACCENT_COLOR` | `#3b82f6` | Accent color for the interface |
 
 ## Customize your instance
 
-Edit `instance.json` and restart the server to change the name, logo, and accent color:
+Set the branding variables in `.env` and restart the server:
 
-```json
-{
-  "name": "Acme Drop",
-  "logo": "branding/logo.svg",
-  "accentColor": "#6ee7b7"
-}
+```bash
+INSTANCE_NAME=Acme Drop
+INSTANCE_LOGO=branding/logo.svg
+INSTANCE_ACCENT_COLOR=#6ee7b7
 ```
 
-`logo` is a path relative to the project root. SVG, PNG, JPEG, WebP, and GIF files are supported. The logo is used in the header and as the favicon. If the path is missing, the bundled mark is used.
+`INSTANCE_LOGO` is a path relative to the project root. SVG, PNG, JPEG, WebP, and GIF files are supported. The logo is used in the header and as the favicon. If the path is missing, the bundled mark is used.
 
-## Server logs
+## Logs
 
-Master devices can open the workspace menu and choose **Server logs**. The view shows recent API activity, warnings, and errors, refreshing every five seconds and kept in `data/metadata/server.log`.
+Server activity, warnings, and errors are printed to the console the server runs in. Only errors are logged by default. Set `LOG_LEVELS` in `.env` to change that, for example `LOG_LEVELS=error,warn` or `LOG_LEVELS=info,warn,error`. Nothing is written to disk.
 
 ## Data
 

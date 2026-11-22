@@ -49,8 +49,3 @@ export function sameOriginGuard(req: Request, res: Response, next: NextFunction)
 
   next();
 }
-
-export function noStore(_req: Request, res: Response, next: NextFunction): void {
-  res.setHeader('Cache-Control', 'no-store');
-  next();
-}

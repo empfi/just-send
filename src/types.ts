@@ -64,10 +64,6 @@ export interface StoredItem {
   previewImageIds?: string[];
 }
 
-export interface ItemWithPath extends StoredItem {
-  fullPath: string;
-}
-
 export interface ClipRecord {
   id: string;
   workspaceId: string;

@@ -11,10 +11,6 @@ export function formatBytes(bytes: number, decimals = 1): string {
   return `${parseFloat((bytes / Math.pow(k, idx)).toFixed(dm))} ${sizes[idx]}`;
 }
 
-export function formatDate(date: Date | string): string {
-  return new Date(date).toISOString();
-}
-
 export function getFileCategory(filename: string, mimeType = ''): FileCategory {
   const ext = path.extname(filename).toLowerCase().replace('.', '');
   const mime = (mimeType || '').toLowerCase();

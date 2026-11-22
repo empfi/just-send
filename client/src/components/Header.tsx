@@ -16,7 +16,6 @@ interface HeaderProps {
   onRecoverWorkspace: () => void;
   onPairDevice: () => void;
   onOpenDevices: () => void;
-  onOpenServerLogs: () => void;
   onHome: () => void;
   onDeleteWorkspace: () => void;
 }
@@ -35,7 +34,6 @@ export function Header({
   onRecoverWorkspace,
   onPairDevice,
   onOpenDevices,
-  onOpenServerLogs,
   onHome,
   onDeleteWorkspace,
 }: HeaderProps) {
@@ -136,12 +134,6 @@ export function Header({
                   <Icon name="smartphone" className="icon icon-sm" />
                   <span>Devices &amp; audit</span>
                 </button>
-                {isMaster ? (
-                  <button className="dropdown-action-btn" onClick={() => closeThen(onOpenServerLogs)}>
-                    <Icon name="code" className="icon icon-sm" />
-                    <span>Server logs</span>
-                  </button>
-                ) : null}
                 {isMaster && current ? (
                   <>
                     <div className="dropdown-divider" />

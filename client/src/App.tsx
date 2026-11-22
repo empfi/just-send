@@ -18,7 +18,6 @@ import { PairSheet } from './components/modals/PairSheet';
 import { QrScanSheet } from './components/modals/QrScanSheet';
 import { PreviewSheet } from './components/modals/PreviewSheet';
 import { DevicesSheet } from './components/modals/DevicesSheet';
-import { ServerLogsSheet } from './components/modals/ServerLogsSheet';
 
 interface Toast {
   id: number;
@@ -724,7 +723,6 @@ export default function App() {
         onRecoverWorkspace={() => setModal('recover')}
         onPairDevice={openPair}
         onOpenDevices={openDevices}
-        onOpenServerLogs={() => setModal('server-logs')}
         onHome={() => navigate(null)}
         onDeleteWorkspace={handleDeleteWorkspace}
       />
@@ -862,7 +860,6 @@ export default function App() {
         notify={notify}
         onClose={() => setModal(null)}
       />
-      <ServerLogsSheet open={authenticated && modal === 'server-logs'} onClose={() => setModal(null)} />
 
       {context ? (
         <div

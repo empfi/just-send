@@ -44,23 +44,6 @@ export interface Clip {
   createdAt: string;
 }
 
-export interface AddressInfo {
-  interface: string;
-  address: string;
-  url: string;
-}
-
-export interface SystemInfo {
-  hostname: string;
-  platform: string;
-  uptime: number;
-  port: number;
-  primaryIp: string;
-  primaryUrl: string;
-  addresses: AddressInfo[];
-  qrCode: string | null;
-}
-
 export interface PairingInfo {
   workspaceId: string;
   workspaceName: string;
@@ -82,13 +65,6 @@ export interface InstanceConfig {
   name: string;
   logoUrl: string | null;
   accentColor: string;
-}
-
-export interface ServerLogEntry {
-  at: string;
-  level: 'info' | 'success' | 'warn' | 'error';
-  message: string;
-  detail?: string;
 }
 
 export interface AuditEntry {
@@ -119,8 +95,7 @@ export type ModalKind =
   | 'qr-scan'
   | 'unauthorized'
   | 'preview'
-  | 'devices'
-  | 'server-logs';
+  | 'devices';
 
 export type Tab = 'files' | 'clips';
 

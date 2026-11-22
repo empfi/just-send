@@ -58,10 +58,6 @@ class SSEService {
     }
   }
 
-  getClientCount(): number {
-    return this.clients.size;
-  }
-
   close(): void {
     clearInterval(this.heartbeat);
     for (const client of this.clients.values()) {

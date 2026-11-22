@@ -190,16 +190,6 @@ class WorkspaceService {
     return Object.keys(this.workspaces).length > 0;
   }
 
-  getWorkspace(workspaceId: string): WorkspaceRecord | null {
-    return this.workspaces[workspaceId] || null;
-  }
-
-  getDevice(workspaceId: string, deviceId: string): DeviceRecord | null {
-    const workspace = this.workspaces[workspaceId];
-    if (!workspace) return null;
-    return workspace.devices.find((device) => device.id === deviceId) ?? null;
-  }
-
   authenticateDeviceById(workspaceId: string, deviceId: string): AuthResult | null {
     const workspace = this.workspaces[workspaceId];
     if (!workspace) return null;

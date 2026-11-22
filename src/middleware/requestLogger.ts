@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { error as logError, info as logInfo, warn as logWarn } from '../utils/logger';
 
-const SKIPPED_PATHS = new Set(['/api/system/logs', '/api/events']);
+const SKIPPED_PATHS = new Set(['/api/events']);
 
 const requestLogger: RequestHandler = (req, res, next) => {
   const path = req.originalUrl.split('?')[0];

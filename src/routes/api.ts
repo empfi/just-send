@@ -221,15 +221,6 @@ router.post('/files/batch-delete', requireSession, (req, res) => {
   }
 });
 
-router.get('/stats', requireSession, (req, res) => {
-  try {
-    const stats = fileService.getStats(authed(req).workspace.id);
-    res.json({ success: true, data: stats });
-  } catch (err) {
-    res.status(500).json({ success: false, error: (err as Error).message });
-  }
-});
-
 router.get('/clips', requireSession, (req, res) => {
   try {
     const clips = textClipService.getClips(authed(req).workspace.id);

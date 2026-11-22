@@ -10,11 +10,6 @@ export function generateKeyphrase(): string {
   return words.join(' ');
 }
 
-export function deriveKeyFromPhrase(phrase: string, salt = 'just-send-workspace-salt'): Buffer {
-  const normPhrase = phrase.trim().toLowerCase().replace(/\s+/g, ' ');
-  return crypto.pbkdf2Sync(normPhrase, salt, 100000, 32, 'sha256');
-}
-
 export function generateWorkspaceKeyPair(): { publicKey: string; privateKey: string } {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
     modulusLength: 2048,
@@ -22,36 +17,6 @@ export function generateWorkspaceKeyPair(): { publicKey: string; privateKey: str
     privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
   });
   return { publicKey, privateKey };
-}
-
-export interface EncryptedPayload {
-  iv: string;
-  tag: string;
-  data: string;
-}
-
-export function encryptData(textOrBuffer: string | Buffer, key: Buffer): EncryptedPayload {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
-  const dataBuf = Buffer.isBuffer(textOrBuffer) ? textOrBuffer : Buffer.from(textOrBuffer, 'utf8');
-  const encrypted = Buffer.concat([cipher.update(dataBuf), cipher.final()]);
-  const tag = cipher.getAuthTag();
-
-  return {
-    iv: iv.toString('base64'),
-    tag: tag.toString('base64'),
-    data: encrypted.toString('base64'),
-  };
-}
-
-export function decryptData(encryptedObj: EncryptedPayload, key: Buffer): Buffer {
-  const iv = Buffer.from(encryptedObj.iv, 'base64');
-  const tag = Buffer.from(encryptedObj.tag, 'base64');
-  const data = Buffer.from(encryptedObj.data, 'base64');
-
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-  decipher.setAuthTag(tag);
-  return Buffer.concat([decipher.update(data), decipher.final()]);
 }
 
 function truncateStep(secret: string, step: number): string {

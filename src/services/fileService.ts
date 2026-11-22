@@ -11,13 +11,6 @@ import type { FileCategory, StoredItem } from '../types';
 
 type MetadataMap = Record<string, StoredItem>;
 
-export interface Stats {
-  totalFiles: number;
-  totalFolders: number;
-  totalSizeBytes: number;
-  formattedTotalSize: string;
-}
-
 class FileService {
   private metadataCache = new Map<string, MetadataMap>();
 
@@ -382,24 +375,6 @@ class FileService {
     }
 
     void archive.finalize();
-  }
-
-  getStats(workspaceId: string): Stats {
-    const meta = this.loadMetadata(workspaceId);
-    const items = Object.values(meta);
-    const files = items.filter((i) => !i.isFolder);
-    const folders = items.filter((i) => i.isFolder);
-    let totalSizeBytes = 0;
-    for (const file of files) {
-      totalSizeBytes += file.size || 0;
-    }
-
-    return {
-      totalFiles: files.length,
-      totalFolders: folders.length,
-      totalSizeBytes,
-      formattedTotalSize: formatBytes(totalSizeBytes),
-    };
   }
 }
 
