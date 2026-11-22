@@ -1005,34 +1005,6 @@ body.app-loading .app-main {
 .clips-view.active {
   display: flex;
 }
-.clip-composer {
-  background: var(--bg-card);
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-card);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-.clip-composer-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-.clip-composer-title {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-.clip-composer-meta {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
 .clip-textarea {
   width: 100%;
   min-height: 88px;
@@ -1049,12 +1021,6 @@ body.app-loading .app-main {
 .clip-textarea:focus {
   outline: none;
   border-color: var(--border-focus);
-}
-.clip-composer-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-3);
 }
 
 .clips-empty {
@@ -1583,17 +1549,6 @@ body.app-loading .app-main {
     height: 22px;
   }
 
-  .clip-composer {
-    padding: var(--space-3);
-  }
-  .clip-composer-meta {
-    display: none;
-  }
-  .clip-composer-footer {
-    gap: var(--space-2);
-  }
-
-  
   .modal-backdrop {
     align-items: flex-end;
     padding: 0;
@@ -1906,7 +1861,8 @@ body.app-loading .app-main {
 }
 
 
-.upload-fab {
+.upload-fab,
+.clip-fab {
   position: fixed;
   right: var(--space-4);
   bottom: var(--space-4);
@@ -1924,14 +1880,17 @@ body.app-loading .app-main {
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
   transition: transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
-.upload-fab:hover {
+.upload-fab:hover,
+.clip-fab:hover {
   transform: translateY(-1px) scale(1.03);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
 }
-.upload-fab:active {
+.upload-fab:active,
+.clip-fab:active {
   transform: scale(0.97);
 }
-.upload-fab:focus-visible {
+.upload-fab:focus-visible,
+.clip-fab:focus-visible {
   outline: 2px solid var(--border-focus);
   outline-offset: 3px;
 }
@@ -2080,6 +2039,12 @@ body.app-loading .app-main {
 @media (max-width: 640px) {
   .upload-fab {
     display: none;
+  }
+  .clip-fab {
+    right: var(--space-3);
+    bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom) + var(--space-3));
+    width: 50px;
+    height: 50px;
   }
   .upload-dock {
     left: var(--space-3);
