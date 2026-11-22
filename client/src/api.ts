@@ -16,6 +16,7 @@ import {
   randomNonce,
   saveDeviceKey,
   signRequest,
+  type DevicePrivateKey,
 } from './deviceCrypto';
 
 const DEVICES_KEY = 'just_send_devices_v2';
@@ -225,7 +226,7 @@ async function bootstrap(): Promise<BootstrapResult> {
   };
 }
 
-async function registerDevice<T extends AuthorizationResult>(res: ApiResponse<T>, privateKey: CryptoKey, publicKeyJwk: JsonWebKey): Promise<ApiResponse<T>> {
+async function registerDevice<T extends AuthorizationResult>(res: ApiResponse<T>, privateKey: DevicePrivateKey, publicKeyJwk: JsonWebKey): Promise<ApiResponse<T>> {
   if (res.success && res.data) {
     await saveDeviceKey(res.data.workspace.id, privateKey);
     rememberDevice(res.data.workspace.id, {

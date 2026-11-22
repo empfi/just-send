@@ -1,6 +1,11 @@
+import { p256 } from '@noble/curves/nist.js';
+import { sha256 } from '@noble/hashes/sha2.js';
+
 const DB_NAME = 'just-send-keys';
 const STORE_NAME = 'device-keys';
 const FINGERPRINT_PREFIX = 'just-send-device-v1';
+
+export type DevicePrivateKey = CryptoKey | Uint8Array;
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -15,7 +20,7 @@ function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveDeviceKey(workspaceId: string, key: CryptoKey): Promise<void> {
+export async function saveDeviceKey(workspaceId: string, key: DevicePrivateKey): Promise<void> {
   const db = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -26,12 +31,12 @@ export async function saveDeviceKey(workspaceId: string, key: CryptoKey): Promis
   db.close();
 }
 
-export async function loadDeviceKey(workspaceId: string): Promise<CryptoKey | null> {
+export async function loadDeviceKey(workspaceId: string): Promise<DevicePrivateKey | null> {
   const db = await openDatabase();
-  const key = await new Promise<CryptoKey | null>((resolve, reject) => {
+  const key = await new Promise<DevicePrivateKey | null>((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const request = tx.objectStore(STORE_NAME).get(workspaceId);
-    request.onsuccess = () => resolve((request.result as CryptoKey | undefined) ?? null);
+    request.onsuccess = () => resolve((request.result as DevicePrivateKey | undefined) ?? null);
     request.onerror = () => reject(request.error);
   });
   db.close();
@@ -49,30 +54,39 @@ export async function deleteDeviceKey(workspaceId: string): Promise<void> {
   db.close();
 }
 
-export async function createDeviceKey(): Promise<{ privateKey: CryptoKey; publicKeyJwk: JsonWebKey }> {
-  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
-    'sign',
-    'verify',
-  ]);
-  const privateJwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
-  const privateKey = await crypto.subtle.importKey(
-    'jwk',
-    privateJwk,
-    { name: 'ECDSA', namedCurve: 'P-256' },
-    false,
-    ['sign']
-  );
-  const publicKeyJwk = await crypto.subtle.exportKey('jwk', pair.publicKey);
-  return { privateKey, publicKeyJwk };
-}
-
 function toBase64Url(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-export async function signRequest(privateKey: CryptoKey, data: string): Promise<string> {
+export async function createDeviceKey(): Promise<{ privateKey: Uint8Array; publicKeyJwk: JsonWebKey }> {
+  const { secretKey } = p256.keygen();
+  const publicKey = p256.getPublicKey(secretKey, false);
+  return {
+    privateKey: secretKey,
+    publicKeyJwk: {
+      kty: 'EC',
+      crv: 'P-256',
+      x: toBase64Url(publicKey.slice(1, 33)),
+      y: toBase64Url(publicKey.slice(33)),
+    },
+  };
+}
+
+export async function signRequest(privateKey: DevicePrivateKey, data: string): Promise<string> {
+  if (privateKey instanceof Uint8Array) {
+    const signature = p256.sign(new TextEncoder().encode(data), privateKey, {
+      prehash: true,
+      lowS: true,
+    });
+    return toBase64Url(signature);
+  }
+
+  if (!globalThis.crypto?.subtle) {
+    throw new Error('This saved device key cannot be used on this connection. Pair this device again.');
+  }
+
   const signature = await crypto.subtle.sign(
     { name: 'ECDSA', hash: 'SHA-256' },
     privateKey,
@@ -105,11 +119,8 @@ export async function deviceFingerprint(): Promise<string> {
     `${nav.deviceMemory ?? ''}`,
   ].join('|');
 
-  const digest = await crypto.subtle.digest(
-    'SHA-256',
-    new TextEncoder().encode(`${FINGERPRINT_PREFIX}:${signals}`)
-  );
-  cachedFingerprint = Array.from(new Uint8Array(digest))
+  const digest = sha256(new TextEncoder().encode(`${FINGERPRINT_PREFIX}:${signals}`));
+  cachedFingerprint = Array.from(digest)
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('');
   return cachedFingerprint;
