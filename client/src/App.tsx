@@ -596,7 +596,6 @@ export default function App() {
       return;
     }
     if (!isMaster) {
-      notify('Pairing invites are limited to master devices', 'info');
       setModal('devices');
       return;
     }

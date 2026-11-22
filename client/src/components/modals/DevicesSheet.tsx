@@ -128,15 +128,6 @@ export function DevicesSheet({ open, workspaceId, isMaster, notify, onClose }: P
       title="Devices & access"
       icon="smartphone"
       large
-      headerAction={
-        <button
-          className="btn btn-subtle btn-icon"
-          title="Refresh"
-          onClick={() => setRefreshKey((key) => key + 1)}
-        >
-          <Icon name="layers" className="icon icon-sm" />
-        </button>
-      }
     >
       {isMaster ? (
         <div className="sheet-tabs">
