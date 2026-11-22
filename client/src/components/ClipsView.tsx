@@ -26,64 +26,81 @@ export function ClipsView({ clips, loading, onAdd, onDelete, onCopied }: ClipsVi
 
   return (
     <div id="clipsView" className="clips-view active">
-      <div className="clip-composer">
-        <div style={{ fontWeight: 500, fontSize: 13 }}>Shared clipboard</div>
+      <section className="clip-composer" aria-label="Shared clipboard">
+        <div className="clip-composer-top">
+          <div className="clip-composer-title">
+            <Icon name="clipboard" className="icon icon-sm" />
+            <span>Shared clipboard</span>
+          </div>
+          <span className="clip-composer-meta">Visible to connected devices</span>
+        </div>
         <textarea
           className="clip-textarea"
-          placeholder="Type or paste text, links, or notes to share with connected devices"
+          placeholder="Paste text, links, or notes to share..."
           value={value}
           onChange={(event) => setValue(event.target.value)}
+          rows={3}
         />
         <div className="clip-composer-footer">
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Syncs instantly across local devices</span>
+          <span className="clip-hint">Synced instantly over your local network</span>
           <button className="btn btn-primary" onClick={submit} disabled={sending}>
             <Icon name="send" className="icon icon-sm" />
-            <span>Send to network</span>
+            <span>{sending ? 'Sending...' : 'Send'}</span>
           </button>
         </div>
-      </div>
+      </section>
 
       {loading ? (
         <ClipsSkeleton />
       ) : clips.length === 0 ? (
-        <div className="empty-state">
-          <Icon name="clipboard" className="icon icon-lg" style={{ color: 'var(--text-muted)' }} />
-          <div className="empty-state-title">No shared snippets</div>
-          <div className="empty-state-desc">
-            Paste text, links, or notes to instantly share them across devices on your local network.
+        <div className="clips-empty">
+          <div className="clips-empty-icon">
+            <Icon name="clipboard" className="icon icon-sm" />
+          </div>
+          <div>
+            <div className="clips-empty-title">No shared snippets yet</div>
+            <div className="clips-empty-desc">
+              Text you send above appears here and on every connected device.
+            </div>
           </div>
         </div>
       ) : (
-        <div className="clips-grid">
-          {clips.map((clip) => (
-            <div className="clip-card" key={clip.id}>
-              <div className="clip-content">{clip.content}</div>
-              <div className="clip-footer">
-                <span>
-                  {clip.sender || 'Device'} · {formatTimeAgo(clip.createdAt)}
-                </span>
-                <div style={{ display: 'flex', gap: 2 }}>
-                  <button
-                    className="btn btn-secondary btn-icon"
-                    title="Copy text"
-                    style={{ height: 26, width: 26 }}
-                    onClick={async () => onCopied(await copyText(clip.content))}
-                  >
-                    <Icon name="copy" className="icon icon-sm" />
-                  </button>
-                  <button
-                    className="btn btn-subtle btn-icon"
-                    title="Delete snippet"
-                    style={{ height: 26, width: 26 }}
-                    onClick={() => onDelete(clip.id)}
-                  >
-                    <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
-                  </button>
+        <>
+          <div className="clips-section-header">
+            <span>Snippets</span>
+            <span className="clips-count tabular">{clips.length}</span>
+          </div>
+          <div className="clips-grid">
+            {clips.map((clip) => (
+              <div className="clip-card" key={clip.id}>
+                <div className="clip-content">{clip.content}</div>
+                <div className="clip-footer">
+                  <span>
+                    {clip.sender || 'Device'} · {formatTimeAgo(clip.createdAt)}
+                  </span>
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    <button
+                      className="btn btn-secondary btn-icon"
+                      title="Copy text"
+                      style={{ height: 26, width: 26 }}
+                      onClick={async () => onCopied(await copyText(clip.content))}
+                    >
+                      <Icon name="copy" className="icon icon-sm" />
+                    </button>
+                    <button
+                      className="btn btn-subtle btn-icon"
+                      title="Delete snippet"
+                      style={{ height: 26, width: 26 }}
+                      onClick={() => onDelete(clip.id)}
+                    >
+                      <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

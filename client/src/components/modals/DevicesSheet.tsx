@@ -144,12 +144,7 @@ export function DevicesSheet({ open, workspaceId, isMaster, notify, onClose }: P
             <span>Audit log</span>
           </button>
         </div>
-      ) : (
-        <div className="device-panel-note">
-          <Icon name="lock" className="icon icon-sm" />
-          <span>Only master devices can invite devices, revoke access, or view the audit log.</span>
-        </div>
-      )}
+      ) : null}
 
       {tab === 'devices' ? (
         loading ? (

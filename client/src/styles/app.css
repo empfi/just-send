@@ -958,15 +958,35 @@ body.app-loading .app-main {
   flex-direction: column;
   gap: var(--space-3);
 }
+.clip-composer-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.clip-composer-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.clip-composer-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
 .clip-textarea {
   width: 100%;
-  min-height: 96px;
+  min-height: 88px;
   background: var(--bg-deep);
   border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-control);
-  padding: var(--space-3);
+  border-radius: 8px;
+  padding: 10px var(--space-3);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 13px;
+  line-height: 1.5;
   color: var(--text-primary);
   resize: vertical;
 }
@@ -979,6 +999,62 @@ body.app-loading .app-main {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+.clip-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.clips-empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-card);
+}
+.clips-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-hairline);
+}
+.clips-empty-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.clips-empty-desc {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.clips-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.clips-count {
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-hairline);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .clips-grid {
@@ -1323,9 +1399,6 @@ body.app-loading .app-main {
   .header-right {
     display: none;
   }
-  .header-right.header-right-master {
-    display: flex;
-  }
   .header-right .header-pair-btn {
     display: none;
   }
@@ -1452,6 +1525,23 @@ body.app-loading .app-main {
   .mobile-upload-btn .icon {
     width: 22px;
     height: 22px;
+  }
+
+  .mobile-dock-spacer {
+    width: 62px;
+  }
+
+  .clip-composer {
+    padding: var(--space-3);
+  }
+  .clip-composer-meta {
+    display: none;
+  }
+  .clip-composer-footer {
+    gap: var(--space-2);
+  }
+  .clip-hint {
+    font-size: 10px;
   }
 
   
@@ -1957,18 +2047,6 @@ body.app-loading .app-main {
 .sheet-tabs .tab-btn {
   flex: 1;
   justify-content: center;
-}
-.device-panel-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin-top: var(--space-3);
-  padding: 10px 12px;
-  border: 1px solid var(--border-hairline);
-  border-radius: var(--radius-control);
-  color: var(--text-muted);
-  font-size: 11px;
-  line-height: 1.5;
 }
 .device-list {
   display: flex;

@@ -707,7 +707,13 @@ export default function App() {
       </main>
 
       {authenticated ? (
-        <MobileDock tab={tab} onTabChange={changeTab} onUpload={openPicker} onConnect={openPair} />
+        <MobileDock
+          tab={tab}
+          onTabChange={changeTab}
+          onUpload={openPicker}
+          onConnect={openPair}
+          isMaster={isMaster}
+        />
       ) : null}
 
       {authenticated ? (
