@@ -42,7 +42,6 @@ export function ClipsView({ clips, loading, onAdd, onDelete, onCopied }: ClipsVi
           rows={3}
         />
         <div className="clip-composer-footer">
-          <span className="clip-hint">Synced instantly over your local network</span>
           <button className="btn btn-primary" onClick={submit} disabled={sending}>
             <Icon name="send" className="icon icon-sm" />
             <span>{sending ? 'Sending...' : 'Send'}</span>

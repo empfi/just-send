@@ -14,7 +14,6 @@ interface HeaderProps {
   onRecoverWorkspace: () => void;
   onPairDevice: () => void;
   onOpenDevices: () => void;
-  isMaster: boolean;
 }
 
 export function Header({
@@ -29,7 +28,6 @@ export function Header({
   onRecoverWorkspace,
   onPairDevice,
   onOpenDevices,
-  isMaster,
 }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -108,12 +106,10 @@ export function Header({
                   <Icon name="smartphone" className="icon icon-sm" />
                   <span>Devices &amp; audit</span>
                 </button>
-                {isMaster ? (
-                  <button className="dropdown-action-btn" onClick={() => closeThen(onPairDevice)}>
-                    <Icon name="qrcode" className="icon icon-sm" />
-                    <span>Authorize device / code</span>
-                  </button>
-                ) : null}
+                <button className="dropdown-action-btn" onClick={() => closeThen(onPairDevice)}>
+                  <Icon name="qrcode" className="icon icon-sm" />
+                  <span>Authorize device / code</span>
+                </button>
               </div>
             ) : null}
           </div>
@@ -136,19 +132,17 @@ export function Header({
           </button>
         </div>
 
-        <div className={`header-right ${isMaster ? 'header-right-master' : ''}`}>
+        <div className="header-right">
           <button className="btn btn-secondary btn-icon" onClick={onOpenDevices} title="Devices & audit">
             <Icon name="smartphone" className="icon icon-sm" />
           </button>
-          {isMaster ? (
-            <button
-              className="btn btn-secondary btn-icon header-pair-btn"
-              onClick={onPairDevice}
-              title="Pair device with QR code"
-            >
-              <Icon name="qrcode" className="icon icon-sm" />
-            </button>
-          ) : null}
+          <button
+            className="btn btn-secondary btn-icon header-pair-btn"
+            onClick={onPairDevice}
+            title="Pair device with QR code"
+          >
+            <Icon name="qrcode" className="icon icon-sm" />
+          </button>
         </div>
       </div>
     </header>

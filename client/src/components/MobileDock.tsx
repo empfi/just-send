@@ -6,10 +6,9 @@ interface MobileDockProps {
   onTabChange: (tab: Tab) => void;
   onUpload: () => void;
   onConnect: () => void;
-  isMaster: boolean;
 }
 
-export function MobileDock({ tab, onTabChange, onUpload, onConnect, isMaster }: MobileDockProps) {
+export function MobileDock({ tab, onTabChange, onUpload, onConnect }: MobileDockProps) {
   return (
     <aside className="mobile-bottom-dock">
       <button
@@ -29,14 +28,10 @@ export function MobileDock({ tab, onTabChange, onUpload, onConnect, isMaster }: 
       <button className="mobile-upload-btn" onClick={onUpload} title="Upload files">
         <Icon name="upload" />
       </button>
-      {isMaster ? (
-        <button className="mobile-nav-btn" onClick={onConnect} title="Connect device">
-          <Icon name="qrcode" />
-          <span>Connect</span>
-        </button>
-      ) : (
-        <span className="mobile-dock-spacer" aria-hidden="true" />
-      )}
+      <button className="mobile-nav-btn" onClick={onConnect} title="Connect device">
+        <Icon name="qrcode" />
+        <span>Connect</span>
+      </button>
     </aside>
   );
 }

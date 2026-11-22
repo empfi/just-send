@@ -997,12 +997,8 @@ body.app-loading .app-main {
 .clip-composer-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-3);
-}
-.clip-hint {
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 .clips-empty {
@@ -1527,10 +1523,6 @@ body.app-loading .app-main {
     height: 22px;
   }
 
-  .mobile-dock-spacer {
-    width: 62px;
-  }
-
   .clip-composer {
     padding: var(--space-3);
   }
@@ -1539,9 +1531,6 @@ body.app-loading .app-main {
   }
   .clip-composer-footer {
     gap: var(--space-2);
-  }
-  .clip-hint {
-    font-size: 10px;
   }
 
   

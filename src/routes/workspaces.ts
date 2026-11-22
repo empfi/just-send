@@ -184,7 +184,7 @@ router.post('/authorize/qr', authLimiter, (req, res) => {
   }
 });
 
-router.get('/:id/pairing', authLimiter, requireSession, requireMaster('create pairing invites'), async (req, res) => {
+router.get('/:id/pairing', authLimiter, requireSession, async (req, res) => {
   try {
     const auth = authed(req);
     if (auth.workspace.id !== req.params.id) {

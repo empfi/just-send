@@ -595,10 +595,6 @@ export default function App() {
       setModal(hasWorkspaces ? 'unauthorized' : 'create-workspace');
       return;
     }
-    if (!isMaster) {
-      setModal('devices');
-      return;
-    }
     setModal('pair');
   };
 
@@ -655,7 +651,6 @@ export default function App() {
         onRecoverWorkspace={() => setModal('recover')}
         onPairDevice={openPair}
         onOpenDevices={openDevices}
-        isMaster={isMaster}
       />
 
       <main className="app-main">
@@ -707,13 +702,7 @@ export default function App() {
       </main>
 
       {authenticated ? (
-        <MobileDock
-          tab={tab}
-          onTabChange={changeTab}
-          onUpload={openPicker}
-          onConnect={openPair}
-          isMaster={isMaster}
-        />
+        <MobileDock tab={tab} onTabChange={changeTab} onUpload={openPicker} onConnect={openPair} />
       ) : null}
 
       {authenticated ? (
