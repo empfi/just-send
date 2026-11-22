@@ -7,13 +7,14 @@ import { Sheet } from '../Sheet';
 interface Props {
   open: boolean;
   workspaceId: string | null;
+  isMaster: boolean;
   notify: Notify;
   onClose: () => void;
   onAuthorized: (result: AuthorizationResult) => void;
 }
 
-export function PairSheet({ open, workspaceId, notify, onClose, onAuthorized }: Props) {
-  const [tab, setTab] = useState<'share' | 'enter'>('share');
+export function PairSheet({ open, workspaceId, isMaster, notify, onClose, onAuthorized }: Props) {
+  const [tab, setTab] = useState<'share' | 'enter'>(isMaster ? 'share' : 'enter');
   const [info, setInfo] = useState<PairingInfo | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -23,11 +24,11 @@ export function PairSheet({ open, workspaceId, notify, onClose, onAuthorized }: 
 
   useEffect(() => {
     if (open) {
-      setTab('share');
+      setTab(isMaster ? 'share' : 'enter');
       setCode('');
       setInfo(null);
     }
-  }, [open]);
+  }, [open, isMaster]);
 
   useEffect(() => {
     if (!open || tab !== 'share' || !workspaceId) return undefined;
@@ -79,38 +80,42 @@ export function PairSheet({ open, workspaceId, notify, onClose, onAuthorized }: 
 
   return (
     <Sheet open={open} onClose={onClose} title="Authorize device" icon="smartphone">
-      <div className="pair-tabs">
-        <button
-          className={`tab-btn ${tab === 'share' ? 'active' : ''}`}
-          style={{ flex: 1, justifyContent: 'center' }}
-          onClick={() => setTab('share')}
-        >
-          <span>Share access</span>
-        </button>
-        <button
-          className={`tab-btn ${tab === 'enter' ? 'active' : ''}`}
-          style={{ flex: 1, justifyContent: 'center' }}
-          onClick={() => setTab('enter')}
-        >
-          <span>Enter code</span>
-        </button>
-      </div>
+      {isMaster ? (
+        <div className="pair-tabs">
+          <button
+            className={`tab-btn ${tab === 'share' ? 'active' : ''}`}
+            style={{ flex: 1, justifyContent: 'center' }}
+            onClick={() => setTab('share')}
+          >
+            <span>Share access</span>
+          </button>
+          <button
+            className={`tab-btn ${tab === 'enter' ? 'active' : ''}`}
+            style={{ flex: 1, justifyContent: 'center' }}
+            onClick={() => setTab('enter')}
+          >
+            <span>Enter code</span>
+          </button>
+        </div>
+      ) : null}
 
       <div className="pair-panels">
-        <div
-          className={`pair-panel pair-panel-share ${tab === 'share' ? 'active' : ''}`}
-          aria-hidden={tab !== 'share'}
-        >
-          <div className="qr-card">
-            {info?.qrCode ? <img className="qr-img" src={info.qrCode} alt="Scan to authorize" /> : null}
+        {isMaster ? (
+          <div
+            className={`pair-panel pair-panel-share ${tab === 'share' ? 'active' : ''}`}
+            aria-hidden={tab !== 'share'}
+          >
+            <div className="qr-card">
+              {info?.qrCode ? <img className="qr-img" src={info.qrCode} alt="Scan to authorize" /> : null}
+            </div>
+            <div className="pair-hint">Or enter this 30-second code on your other device:</div>
+            <div className="rotating-code-display tabular">{info?.code ?? '------'}</div>
+            <div className="pair-rotate-hint">
+              Rotates automatically in <span className="tabular">{remaining}</span>{' '}
+              {remaining === 1 ? 'second' : 'seconds'}
+            </div>
           </div>
-          <div className="pair-hint">Or enter this 30-second code on your other device:</div>
-          <div className="rotating-code-display tabular">{info?.code ?? '------'}</div>
-          <div className="pair-rotate-hint">
-            Rotates automatically in <span className="tabular">{remaining}</span>{' '}
-            {remaining === 1 ? 'second' : 'seconds'}
-          </div>
-        </div>
+        ) : null}
 
         <div
           className={`pair-panel pair-panel-enter ${tab === 'enter' ? 'active' : ''}`}

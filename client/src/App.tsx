@@ -755,6 +755,7 @@ export default function App() {
       <PairSheet
         open={authenticated && modal === 'pair'}
         workspaceId={currentWsId}
+        isMaster={isMaster}
         notify={notify}
         onClose={() => setModal(null)}
         onAuthorized={handleAuthorized}
