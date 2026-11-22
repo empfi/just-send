@@ -4,23 +4,15 @@ import crypto from 'crypto';
 import workspaceService from '../services/workspaceService';
 import { MAX_FILE_SIZE } from '../config';
 import { sanitizeFilename } from '../utils/formatters';
-
-function firstHeaderValue(value: string | string[] | undefined): string | undefined {
-  if (Array.isArray(value)) return value[0];
-  return value;
-}
+import { authed } from './auth';
 
 const storage = multer.diskStorage({
   destination: (req, _file, cb) => {
-    const workspaceId =
-      firstHeaderValue(req.headers['x-workspace-id']) ??
-      (typeof req.query.workspaceId === 'string' ? req.query.workspaceId : undefined) ??
-      (typeof req.body?.workspaceId === 'string' ? req.body.workspaceId : undefined);
-
-    if (!workspaceId) {
-      return cb(new Error('Missing x-workspace-id header'), '');
+    try {
+      cb(null, workspaceService.getWorkspaceUploadsDir(authed(req).workspace.id));
+    } catch (err) {
+      cb(err as Error, '');
     }
-    cb(null, workspaceService.getWorkspaceUploadsDir(workspaceId));
   },
   filename: (_req, file, cb) => {
     const rawName = Buffer.from(file.originalname, 'latin1').toString('utf8');

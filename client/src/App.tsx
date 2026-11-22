@@ -452,7 +452,12 @@ export default function App() {
     };
   }, [startUpload]);
 
-  const downloadItem = (item: Item) => {
+  const downloadItem = async (item: Item) => {
+    const ready = await api.ensureSession(undefined, true);
+    if (!ready) {
+      notify('Could not refresh this session. Reconnect this device and try again.', 'error');
+      return;
+    }
     window.location.href = api.downloadUrl(item.id);
   };
 
