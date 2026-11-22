@@ -10,6 +10,8 @@ A fast, private file server for your local network. Move files and text between 
 - Shared text drop for links, snippets, and codes
 - Live updates across connected devices
 - Workspace recovery with a 12-word phrase
+- Master-only server logs with level filters
+- Configurable instance name, logo, and accent color
 
 ## Quick start
 
@@ -43,6 +45,24 @@ Copy `.env.example` to `.env` to change the port, host, or upload limit.
 | `PUBLIC_URL` | auto | Optional public origin override for the startup QR |
 | `HOST` | `0.0.0.0` | Bind address |
 | `MAX_FILE_SIZE_BYTES` | 50 GB | Per-file upload limit |
+
+## Customize your instance
+
+Edit `instance.json` and restart the server to change the name, logo, and accent color:
+
+```json
+{
+  "name": "Acme Drop",
+  "logo": "branding/logo.svg",
+  "accentColor": "#6ee7b7"
+}
+```
+
+`logo` is a path relative to the project root. SVG, PNG, JPEG, WebP, and GIF files are supported. The logo is used in the header and as the favicon. If the path is missing, the bundled mark is used.
+
+## Server logs
+
+Master devices can open the workspace menu and choose **Server logs**. The view shows recent API activity, warnings, and errors, refreshing every five seconds and kept in `data/metadata/server.log`.
 
 ## Data
 

@@ -78,6 +78,19 @@ export interface DeviceInfo {
   lastSeenAt: string;
 }
 
+export interface InstanceConfig {
+  name: string;
+  logoUrl: string | null;
+  accentColor: string;
+}
+
+export interface ServerLogEntry {
+  at: string;
+  level: 'info' | 'success' | 'warn' | 'error';
+  message: string;
+  detail?: string;
+}
+
 export interface AuditEntry {
   at: string;
   event: string;
@@ -106,7 +119,8 @@ export type ModalKind =
   | 'qr-scan'
   | 'unauthorized'
   | 'preview'
-  | 'devices';
+  | 'devices'
+  | 'server-logs';
 
 export type Tab = 'files' | 'clips';
 

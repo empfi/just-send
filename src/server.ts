@@ -8,6 +8,7 @@ import systemRoutes from './routes/system';
 import workspaceRoutes from './routes/workspaces';
 import sseService from './services/sseService';
 import errorHandler from './middleware/errorHandler';
+import requestLogger from './middleware/requestLogger';
 import { securityHeaders, sameOriginGuard } from './middleware/security';
 import { requireSession, type AuthedRequest } from './middleware/auth';
 import { printBanner } from './utils/logger';
@@ -21,6 +22,7 @@ app.use(securityHeaders);
 app.use('/api', sameOriginGuard);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(requestLogger);
 
 const clientIndex = path.join(CLIENT_DIR, 'index.html');
 if (fs.existsSync(CLIENT_DIR)) {

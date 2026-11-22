@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Tab, Workspace } from '../types';
+import type { InstanceConfig, Tab, Workspace } from '../types';
 import { Icon } from './Icon';
 
 interface HeaderProps {
@@ -9,12 +9,15 @@ interface HeaderProps {
   hasWorkspaces: boolean;
   isMaster: boolean;
   tab: Tab;
+  instance: InstanceConfig;
   onSelectWorkspace: (id: string) => void;
   onTabChange: (tab: Tab) => void;
   onCreateWorkspace: () => void;
   onRecoverWorkspace: () => void;
   onPairDevice: () => void;
   onOpenDevices: () => void;
+  onOpenServerLogs: () => void;
+  onHome: () => void;
   onDeleteWorkspace: () => void;
 }
 
@@ -25,12 +28,15 @@ export function Header({
   hasWorkspaces,
   isMaster,
   tab,
+  instance,
   onSelectWorkspace,
   onTabChange,
   onCreateWorkspace,
   onRecoverWorkspace,
   onPairDevice,
   onOpenDevices,
+  onOpenServerLogs,
+  onHome,
   onDeleteWorkspace,
 }: HeaderProps) {
   const [open, setOpen] = useState(false);
@@ -57,6 +63,26 @@ export function Header({
     <header className="app-header">
       <div className="header-container">
         <div className="header-left">
+          <a
+            className="brand"
+            href="/files"
+            aria-label={instance.name}
+            onClick={(event) => {
+              event.preventDefault();
+              setOpen(false);
+              onHome();
+            }}
+          >
+            {instance.logoUrl ? (
+              <img className="brand-logo" src={instance.logoUrl} alt="" />
+            ) : (
+              <span className="brand-mark">
+                <Icon name="send" className="icon icon-sm" />
+              </span>
+            )}
+            <span className="brand-name">{instance.name}</span>
+          </a>
+
           <div className="workspace-selector-wrap" ref={wrapRef}>
             <button
               className="btn btn-secondary workspace-trigger-btn"
@@ -110,6 +136,12 @@ export function Header({
                   <Icon name="smartphone" className="icon icon-sm" />
                   <span>Devices &amp; audit</span>
                 </button>
+                {isMaster ? (
+                  <button className="dropdown-action-btn" onClick={() => closeThen(onOpenServerLogs)}>
+                    <Icon name="code" className="icon icon-sm" />
+                    <span>Server logs</span>
+                  </button>
+                ) : null}
                 {isMaster && current ? (
                   <>
                     <div className="dropdown-divider" />

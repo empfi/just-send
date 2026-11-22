@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from 'express';
 import multer from 'multer';
 import { formatBytes } from '../utils/formatters';
 import { MAX_FILE_SIZE } from '../config';
+import { error as logError } from '../utils/logger';
 import type { AppError } from '../types';
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
@@ -21,7 +22,7 @@ const errorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   }
 
   if (err) {
-    console.error('Unhandled server error:', err);
+    logError('Unhandled server error', err);
     const appErr = err as AppError;
     res.status(appErr.status ?? 500).json({
       success: false,

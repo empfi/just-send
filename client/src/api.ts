@@ -4,8 +4,10 @@ import type {
   Breadcrumb,
   Clip,
   DeviceInfo,
+  InstanceConfig,
   Item,
   PairingInfo,
+  ServerLogEntry,
   SystemInfo,
   Workspace,
 } from './types';
@@ -473,6 +475,14 @@ export const api = {
 
   async getSystemInfo(): Promise<ApiResponse<SystemInfo>> {
     return request<SystemInfo>('/api/system/info');
+  },
+
+  async getInstanceConfig(): Promise<ApiResponse<InstanceConfig>> {
+    return request<InstanceConfig>('/api/system/config');
+  },
+
+  async getServerLogs(limit = 200): Promise<ApiResponse<ServerLogEntry[]>> {
+    return request<ServerLogEntry[]>(`/api/system/logs?limit=${limit}`);
   },
 
   async getClips(): Promise<ApiResponse<Clip[]>> {

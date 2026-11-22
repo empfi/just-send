@@ -1,4 +1,5 @@
 import { generateAsciiQr, getPrimaryLanIp } from '../services/networkService';
+import serverLogService, { type ServerLogLevel } from '../services/serverLogService';
 import { getAdvertisedOrigin } from './requestOrigin';
 
 const colors = {
@@ -14,24 +15,41 @@ const colors = {
   white: '\x1b[37m',
 };
 
-export function info(msg: string): void {
-  const time = new Date().toLocaleTimeString();
-  console.log(`${colors.gray}[${time}]${colors.reset} ${colors.cyan}[INFO]${colors.reset} ${msg}`);
+function detailText(detail: unknown): string | undefined {
+  if (detail === undefined || detail === null || detail === '') return undefined;
+  if (typeof detail === 'string') return detail;
+  if (detail instanceof Error) return detail.stack ?? detail.message;
+  try {
+    return JSON.stringify(detail);
+  } catch {
+    return String(detail);
+  }
 }
 
-export function success(msg: string): void {
+function write(level: ServerLogLevel, label: string, color: string, msg: string, detail?: unknown): void {
   const time = new Date().toLocaleTimeString();
-  console.log(`${colors.gray}[${time}]${colors.reset} ${colors.green}[SUCCESS]${colors.reset} ${msg}`);
+  const stream = level === 'error' ? console.error : console.log;
+  stream(
+    `${colors.gray}[${time}]${colors.reset} ${color}[${label}]${colors.reset} ${msg}`,
+    detail ?? ''
+  );
+  serverLogService.record(level, msg, detailText(detail));
 }
 
-export function warn(msg: string): void {
-  const time = new Date().toLocaleTimeString();
-  console.log(`${colors.gray}[${time}]${colors.reset} ${colors.yellow}[WARN]${colors.reset} ${msg}`);
+export function info(msg: string, detail?: unknown): void {
+  write('info', 'INFO', colors.cyan, msg, detail);
+}
+
+export function success(msg: string, detail?: unknown): void {
+  write('success', 'SUCCESS', colors.green, msg, detail);
+}
+
+export function warn(msg: string, detail?: unknown): void {
+  write('warn', 'WARN', colors.yellow, msg, detail);
 }
 
 export function error(msg: string, err?: unknown): void {
-  const time = new Date().toLocaleTimeString();
-  console.error(`${colors.gray}[${time}]${colors.reset} \x1b[31m[ERROR]\x1b[0m ${msg}`, err ?? '');
+  write('error', 'ERROR', '\x1b[31m', msg, err);
 }
 
 export async function printBanner(port: number, host: string): Promise<void> {
@@ -47,6 +65,12 @@ export async function printBanner(port: number, host: string): Promise<void> {
   if (asciiQr) {
     console.log(asciiQr);
   }
+
+  serverLogService.record(
+    'success',
+    `Server listening on ${host}:${port}`,
+    `Local: http://localhost:${port} · LAN: ${origin}`
+  );
 }
 
 export { colors };

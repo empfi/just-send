@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { api, type AuthorizationResult, type CreateWorkspaceResult } from './api';
-import type { Breadcrumb, Clip, Item, ModalKind, Tab, ToastKind, Workspace } from './types';
+import type { Breadcrumb, Clip, InstanceConfig, Item, ModalKind, Tab, ToastKind, Workspace } from './types';
 import { copyText, defaultDeviceName } from './utils';
 import { Icon } from './components/Icon';
 import { IconSprite } from './components/IconSprite';
@@ -18,6 +18,7 @@ import { PairSheet } from './components/modals/PairSheet';
 import { QrScanSheet } from './components/modals/QrScanSheet';
 import { PreviewSheet } from './components/modals/PreviewSheet';
 import { DevicesSheet } from './components/modals/DevicesSheet';
+import { ServerLogsSheet } from './components/modals/ServerLogsSheet';
 
 interface Toast {
   id: number;
@@ -32,6 +33,11 @@ interface ContextState {
 }
 
 const CONTEXT_WIDTH = 190;
+const DEFAULT_INSTANCE: InstanceConfig = {
+  name: 'Just Send',
+  logoUrl: null,
+  accentColor: '#3b82f6',
+};
 
 interface AppRoute {
   tab: Tab;
@@ -88,6 +94,7 @@ function readRoute(): AppRoute {
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('files');
+  const [instance, setInstance] = useState<InstanceConfig>(DEFAULT_INSTANCE);
   const [folderId, setFolderId] = useState<string | null>(null);
   const [routeFileId, setRouteFileId] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -247,6 +254,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    api
+      .getInstanceConfig()
+      .then((res) => {
+        if (!cancelled && res.success && res.data) setInstance(res.data);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     void (async () => {
       try {
         const boot = await api.bootstrap();
@@ -272,8 +292,24 @@ export default function App() {
 
   useEffect(() => {
     const currentFolder = tab === 'files' && folderId ? breadcrumbs.find((crumb) => crumb.id === folderId) : null;
-    document.title = currentFolder ? `${currentFolder.name} | Just Send` : 'Just Send';
-  }, [tab, folderId, breadcrumbs]);
+    document.title = currentFolder ? `${currentFolder.name} | ${instance.name}` : instance.name;
+  }, [tab, folderId, breadcrumbs, instance.name]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', instance.accentColor);
+
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.setAttribute('content', instance.accentColor);
+
+    if (!instance.logoUrl) return;
+    let icon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!icon) {
+      icon = document.createElement('link');
+      icon.rel = 'icon';
+      document.head.appendChild(icon);
+    }
+    icon.href = instance.logoUrl;
+  }, [instance]);
 
   useEffect(() => {
     if (!authenticated || tab !== 'files' || !currentWsId) {
@@ -681,12 +717,15 @@ export default function App() {
         hasWorkspaces={hasWorkspaces}
         isMaster={isMaster}
         tab={tab}
+        instance={instance}
         onSelectWorkspace={selectWorkspace}
         onTabChange={changeTab}
         onCreateWorkspace={() => setModal('create-workspace')}
         onRecoverWorkspace={() => setModal('recover')}
         onPairDevice={openPair}
         onOpenDevices={openDevices}
+        onOpenServerLogs={() => setModal('server-logs')}
+        onHome={() => navigate(null)}
         onDeleteWorkspace={handleDeleteWorkspace}
       />
 
@@ -823,6 +862,7 @@ export default function App() {
         notify={notify}
         onClose={() => setModal(null)}
       />
+      <ServerLogsSheet open={authenticated && modal === 'server-logs'} onClose={() => setModal(null)} />
 
       {context ? (
         <div
