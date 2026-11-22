@@ -38,6 +38,7 @@ Copy `.env.example` to `.env` to change the port, host, or upload limit.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `PORT` | `3456` | HTTP port |
+| `SERVER_PORT` | unset | Hosting-assigned port; takes precedence over `PORT` |
 | `HOST` | `0.0.0.0` | Bind address |
 | `MAX_FILE_SIZE_BYTES` | 50 GB | Per-file upload limit |
 

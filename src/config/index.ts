@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs';
 
-const PORT = parseInt(process.env.PORT ?? '', 10) || 3456;
+const PORT = parseInt(process.env.SERVER_PORT ?? process.env.PORT ?? '', 10) || 3456;
 const HOST = process.env.HOST || '0.0.0.0';
 
 const ROOT_DIR = path.resolve(process.cwd());
