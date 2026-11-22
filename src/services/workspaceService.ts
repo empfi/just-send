@@ -461,6 +461,28 @@ class WorkspaceService {
     };
   }
 
+  deleteWorkspace(workspaceId: string): boolean {
+    const workspace = this.workspaces[workspaceId];
+    if (!workspace) return false;
+
+    delete this.workspaces[workspaceId];
+    this.saveWorkspaces();
+    this.codeAttempts.delete(workspaceId);
+    for (const key of [...this.usedQrTokens.keys()]) {
+      if (key.startsWith(`${workspaceId}:`)) this.usedQrTokens.delete(key);
+    }
+
+    try {
+      const dir = path.join(WORKSPACE_DATA_ROOT, workspace.id);
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch (err) {
+      console.error(`Error deleting workspace data for ${workspaceId}:`, err);
+    }
+
+    sseService.broadcast('workspace:deleted', { id: workspace.id, name: workspace.name });
+    return true;
+  }
+
   revokeDevice(workspaceId: string, deviceId: string): DeviceInfo | null {
     const workspace = this.workspaces[workspaceId];
     if (!workspace) return null;

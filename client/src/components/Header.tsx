@@ -7,6 +7,7 @@ interface HeaderProps {
   loading: boolean;
   currentWorkspaceId: string | null;
   hasWorkspaces: boolean;
+  isMaster: boolean;
   tab: Tab;
   onSelectWorkspace: (id: string) => void;
   onTabChange: (tab: Tab) => void;
@@ -14,6 +15,7 @@ interface HeaderProps {
   onRecoverWorkspace: () => void;
   onPairDevice: () => void;
   onOpenDevices: () => void;
+  onDeleteWorkspace: () => void;
 }
 
 export function Header({
@@ -21,6 +23,7 @@ export function Header({
   loading,
   currentWorkspaceId,
   hasWorkspaces,
+  isMaster,
   tab,
   onSelectWorkspace,
   onTabChange,
@@ -28,6 +31,7 @@ export function Header({
   onRecoverWorkspace,
   onPairDevice,
   onOpenDevices,
+  onDeleteWorkspace,
 }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -110,6 +114,18 @@ export function Header({
                   <Icon name="qrcode" className="icon icon-sm" />
                   <span>Authorize device / code</span>
                 </button>
+                {isMaster && current ? (
+                  <>
+                    <div className="dropdown-divider" />
+                    <button
+                      className="dropdown-action-btn dropdown-action-danger"
+                      onClick={() => closeThen(onDeleteWorkspace)}
+                    >
+                      <Icon name="trash" className="icon icon-sm" />
+                      <span>Delete workspace</span>
+                    </button>
+                  </>
+                ) : null}
               </div>
             ) : null}
           </div>

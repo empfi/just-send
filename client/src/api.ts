@@ -11,6 +11,7 @@ import type {
 } from './types';
 import {
   createDeviceKey,
+  deleteDeviceKey,
   deviceFingerprint,
   loadDeviceKey,
   randomNonce,
@@ -271,6 +272,30 @@ export const api = {
 
   async listWorkspaces(): Promise<ApiResponse<Workspace[]>> {
     return request<Workspace[]>('/api/workspaces');
+  },
+
+  async deleteWorkspace(workspaceId: string): Promise<ApiResponse<null>> {
+    await ensureSession(workspaceId);
+    return request<null>(`/api/workspaces/${workspaceId}`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    });
+  },
+
+  async forgetWorkspace(workspaceId: string): Promise<void> {
+    const devices = getDevices();
+    delete devices[workspaceId];
+    setDevices(devices);
+    if (activeWorkspaceId() === workspaceId) setActiveWorkspace(null);
+    if (sessionWorkspaceId === workspaceId) {
+      sessionWorkspaceId = null;
+      sessionIsMaster = false;
+    }
+    try {
+      await deleteDeviceKey(workspaceId);
+    } catch {
+      /* orphaned key is unusable without the deleted workspace */
+    }
   },
 
   async createWorkspace(name: string, deviceName: string): Promise<ApiResponse<CreateWorkspaceResult>> {

@@ -565,6 +565,30 @@ export default function App() {
     notify(`Joined ${result.workspace.name}`, 'success');
   };
 
+  const handleDeleteWorkspace = async () => {
+    if (!currentWsId) return;
+    const name = workspaces.find((workspace) => workspace.id === currentWsId)?.name ?? 'this workspace';
+    if (
+      !window.confirm(
+        `Delete "${name}" permanently? Its files, snippets, devices, and sessions will be removed.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await api.deleteWorkspace(currentWsId);
+      if (!res.success) {
+        notify(res.error ?? 'Could not delete workspace', 'error');
+        return;
+      }
+      await api.forgetWorkspace(currentWsId);
+      window.location.replace('/');
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
+
   const selectWorkspace = async (id: string) => {
     const sessionReady = await api.ensureSession(id);
     if (!sessionReady) {
@@ -644,6 +668,7 @@ export default function App() {
         loading={workspacesLoading}
         currentWorkspaceId={currentWsId}
         hasWorkspaces={hasWorkspaces}
+        isMaster={isMaster}
         tab={tab}
         onSelectWorkspace={selectWorkspace}
         onTabChange={changeTab}
@@ -651,6 +676,7 @@ export default function App() {
         onRecoverWorkspace={() => setModal('recover')}
         onPairDevice={openPair}
         onOpenDevices={openDevices}
+        onDeleteWorkspace={handleDeleteWorkspace}
       />
 
       <main className="app-main">

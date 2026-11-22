@@ -271,6 +271,13 @@ body.app-loading .app-main {
   background: var(--bg-raised);
   color: var(--text-primary);
 }
+.dropdown-action-btn.dropdown-action-danger {
+  color: var(--status-negative);
+}
+.dropdown-action-btn.dropdown-action-danger:hover {
+  background: rgba(229, 72, 77, 0.12);
+  color: var(--status-negative);
+}
 
 .keyphrase-grid {
   display: grid;

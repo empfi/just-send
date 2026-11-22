@@ -226,6 +226,28 @@ router.get('/:id/pairing', authLimiter, requireSession, requireMaster('share acc
   }
 });
 
+router.delete('/:id', requireSession, requireMaster('delete workspaces'), (req, res) => {
+  const auth = authed(req);
+  if (auth.workspace.id !== req.params.id) {
+    res.status(403).json({ success: false, error: 'Session does not belong to this workspace' });
+    return;
+  }
+
+  if (!workspaceService.deleteWorkspace(req.params.id)) {
+    res.status(404).json({ success: false, error: 'Workspace not found' });
+    return;
+  }
+
+  sessionService.destroyForWorkspace(req.params.id);
+  auditService.log('workspace_deleted', {
+    workspaceId: req.params.id,
+    deviceId: auth.device.id,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  });
+  res.json({ success: true, data: null });
+});
+
 router.get('/:id/devices', requireSession, (req, res) => {
   const auth = authed(req);
   if (auth.workspace.id !== req.params.id) {
