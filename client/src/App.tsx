@@ -583,6 +583,10 @@ export default function App() {
         return;
       }
       await api.forgetWorkspace(currentWsId);
+
+      for (const known of api.knownWorkspaces()) {
+        if (await api.ensureSession(known.id)) break;
+      }
       window.location.replace('/');
     } catch (err) {
       notify((err as Error).message, 'error');
