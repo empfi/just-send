@@ -1,0 +1,114 @@
+export type FileCategory =
+  | 'folder'
+  | 'image'
+  | 'video'
+  | 'audio'
+  | 'document'
+  | 'archive'
+  | 'code'
+  | 'other';
+
+export interface Workspace {
+  id: string;
+  name: string;
+  createdAt?: string;
+  deviceCount?: number;
+  publicKey?: string;
+}
+
+export interface Item {
+  id: string;
+  workspaceId: string;
+  isFolder: boolean;
+  folderId: string | null;
+  originalName: string;
+  size: number;
+  formattedSize: string;
+  mimeType: string;
+  category: FileCategory;
+  uploadedAt: string;
+  downloadCount: number;
+  previewImageIds?: string[];
+}
+
+export interface Breadcrumb {
+  id: string;
+  name: string;
+}
+
+export interface Clip {
+  id: string;
+  workspaceId: string;
+  content: string;
+  sender: string;
+  createdAt: string;
+}
+
+export interface AddressInfo {
+  interface: string;
+  address: string;
+  url: string;
+}
+
+export interface SystemInfo {
+  hostname: string;
+  platform: string;
+  uptime: number;
+  port: number;
+  primaryIp: string;
+  primaryUrl: string;
+  addresses: AddressInfo[];
+  qrCode: string | null;
+}
+
+export interface PairingInfo {
+  workspaceId: string;
+  workspaceName: string;
+  code: string;
+  secondsRemaining: number;
+  qrTargetUrl: string;
+  qrCode: string | null;
+}
+
+export interface DeviceInfo {
+  id: string;
+  name: string;
+  isMaster: boolean;
+  authorizedAt: string;
+  lastSeenAt: string;
+}
+
+export interface AuditEntry {
+  at: string;
+  event: string;
+  workspaceId?: string;
+  deviceId?: string;
+  ip?: string;
+  userAgent?: string;
+  detail?: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  hasWorkspaces?: boolean;
+  breadcrumbs?: Breadcrumb[];
+  count?: number;
+}
+
+export type ModalKind =
+  | null
+  | 'create-workspace'
+  | 'keyphrase'
+  | 'recover'
+  | 'pair'
+  | 'qr-scan'
+  | 'unauthorized'
+  | 'preview'
+  | 'devices';
+
+export type Tab = 'files' | 'clips';
+
+export type ToastKind = 'success' | 'error' | 'info';
+export type Notify = (message: string, kind?: ToastKind) => void;
