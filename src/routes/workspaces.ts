@@ -233,6 +233,11 @@ router.post('/:id/leave', requireSession, (req, res) => {
     return;
   }
 
+  if (auth.device.isMaster) {
+    res.status(403).json({ success: false, error: 'Master devices cannot leave a workspace.' });
+    return;
+  }
+
   if (!isWorkspaceLeaveAllowed()) {
     res.status(403).json({ success: false, error: 'Leaving workspaces is disabled on this instance.' });
     return;

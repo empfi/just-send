@@ -643,6 +643,10 @@ export default function App() {
 
   const handleLeaveWorkspace = async () => {
     if (!currentWsId) return;
+    if (isMaster) {
+      notify('Master devices cannot leave a workspace. Delete it instead.', 'error');
+      return;
+    }
     if (!instance.allowLeaveWorkspace) {
       notify('Leaving workspaces is disabled on this instance.', 'error');
       return;

@@ -53,6 +53,8 @@ export function Header({
 
   const current = workspaces.find((w) => w.id === currentWorkspaceId);
   const label = current ? current.name : hasWorkspaces ? 'Connect device' : 'Setup required';
+  const canDelete = Boolean(current) && isMaster && instance.allowDeleteWorkspace;
+  const canLeave = Boolean(current) && !isMaster && instance.allowLeaveWorkspace;
 
   const closeThen = (fn: () => void) => {
     setOpen(false);
@@ -136,22 +138,26 @@ export function Header({
                   <Icon name="smartphone" className="icon icon-sm" />
                   <span>Devices &amp; audit</span>
                 </button>
-                {current && instance.allowLeaveWorkspace ? (
-                  <button className="dropdown-action-btn" onClick={() => closeThen(onLeaveWorkspace)}>
-                    <Icon name="x" className="icon icon-sm" />
-                    <span>Leave workspace</span>
-                  </button>
-                ) : null}
-                {isMaster && current && instance.allowDeleteWorkspace ? (
+                {canDelete || canLeave ? (
                   <>
                     <div className="dropdown-divider" />
-                    <button
-                      className="dropdown-action-btn dropdown-action-danger"
-                      onClick={() => closeThen(onDeleteWorkspace)}
-                    >
-                      <Icon name="trash" className="icon icon-sm" />
-                      <span>Delete workspace</span>
-                    </button>
+                    {canDelete ? (
+                      <button
+                        className="dropdown-action-btn dropdown-action-danger"
+                        onClick={() => closeThen(onDeleteWorkspace)}
+                      >
+                        <Icon name="trash" className="icon icon-sm" />
+                        <span>Delete workspace</span>
+                      </button>
+                    ) : (
+                      <button
+                        className="dropdown-action-btn dropdown-action-danger"
+                        onClick={() => closeThen(onLeaveWorkspace)}
+                      >
+                        <Icon name="x" className="icon icon-sm" />
+                        <span>Leave workspace</span>
+                      </button>
+                    )}
                   </>
                 ) : null}
               </div>
