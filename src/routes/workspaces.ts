@@ -6,9 +6,10 @@ import { authLimiter, strictLimiter } from '../middleware/rateLimiter';
 import { requireSession, authed } from '../middleware/auth';
 import { generateQrDataUrl } from '../services/networkService';
 import { isValidPublicKey, normalizeFingerprint } from '../utils/deviceCrypto';
-import { setSessionCookie } from '../utils/sessionCookie';
+import { setSessionCookie, clearSessionCookie } from '../utils/sessionCookie';
 import sseService from '../services/sseService';
 import { getRequestOrigin } from '../utils/requestOrigin';
+import { isWorkspaceDeletionAllowed, isWorkspaceLeaveAllowed } from '../services/instanceConfigService';
 
 const router = express.Router();
 
@@ -225,10 +226,38 @@ router.get('/:id/pairing', authLimiter, requireSession, requireMaster('share acc
   }
 });
 
+router.post('/:id/leave', requireSession, (req, res) => {
+  const auth = authed(req);
+  if (auth.workspace.id !== req.params.id) {
+    res.status(403).json({ success: false, error: 'Session does not belong to this workspace' });
+    return;
+  }
+
+  if (!isWorkspaceLeaveAllowed()) {
+    res.status(403).json({ success: false, error: 'Leaving workspaces is disabled on this instance.' });
+    return;
+  }
+
+  sessionService.destroy(auth.session.id);
+  clearSessionCookie(res);
+  auditService.log('workspace_left', {
+    workspaceId: req.params.id,
+    deviceId: auth.device.id,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'],
+  });
+  res.json({ success: true, data: null });
+});
+
 router.delete('/:id', requireSession, requireMaster('delete workspaces'), (req, res) => {
   const auth = authed(req);
   if (auth.workspace.id !== req.params.id) {
     res.status(403).json({ success: false, error: 'Session does not belong to this workspace' });
+    return;
+  }
+
+  if (!isWorkspaceDeletionAllowed()) {
+    res.status(403).json({ success: false, error: 'Deleting workspaces is disabled on this instance.' });
     return;
   }
 

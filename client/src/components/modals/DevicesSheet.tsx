@@ -26,6 +26,7 @@ const AUDIT_LABELS: Record<string, string> = {
   device_upgraded_to_key: 'Device upgraded to key',
   workspace_created: 'Workspace created',
   workspace_recovered: 'Workspace recovered',
+  workspace_left: 'Workspace left',
   master_action_denied: 'Master-only action denied',
 };
 

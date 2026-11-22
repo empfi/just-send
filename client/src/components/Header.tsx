@@ -17,6 +17,7 @@ interface HeaderProps {
   onPairDevice: () => void;
   onOpenDevices: () => void;
   onHome: () => void;
+  onLeaveWorkspace: () => void;
   onDeleteWorkspace: () => void;
 }
 
@@ -35,6 +36,7 @@ export function Header({
   onPairDevice,
   onOpenDevices,
   onHome,
+  onLeaveWorkspace,
   onDeleteWorkspace,
 }: HeaderProps) {
   const [open, setOpen] = useState(false);
@@ -134,7 +136,13 @@ export function Header({
                   <Icon name="smartphone" className="icon icon-sm" />
                   <span>Devices &amp; audit</span>
                 </button>
-                {isMaster && current ? (
+                {current && instance.allowLeaveWorkspace ? (
+                  <button className="dropdown-action-btn" onClick={() => closeThen(onLeaveWorkspace)}>
+                    <Icon name="x" className="icon icon-sm" />
+                    <span>Leave workspace</span>
+                  </button>
+                ) : null}
+                {isMaster && current && instance.allowDeleteWorkspace ? (
                   <>
                     <div className="dropdown-divider" />
                     <button

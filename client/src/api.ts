@@ -282,6 +282,18 @@ export const api = {
     });
   },
 
+  async leaveWorkspace(workspaceId: string): Promise<ApiResponse<null>> {
+    const res = await request<null>(`/api/workspaces/${workspaceId}/leave`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+    if (res.success) {
+      sessionWorkspaceId = null;
+      sessionIsMaster = false;
+    }
+    return res;
+  },
+
   async forgetWorkspace(workspaceId: string): Promise<void> {
     const devices = getDevices();
     delete devices[workspaceId];

@@ -45,6 +45,8 @@ Copy `.env.example` to `.env` and restart the server to change these values. Var
 | `HOST` | `0.0.0.0` | Bind address |
 | `MAX_FILE_SIZE_BYTES` | 50 GB | Per-file upload limit |
 | `LOG_LEVELS` | `error` | Comma-separated console log levels: `info`, `warn`, `error` |
+| `ALLOW_DELETE_WORKSPACE` | `true` | Set to `false` to block deleting workspaces |
+| `ALLOW_LEAVE_WORKSPACE` | `true` | Set to `false` to block leaving workspaces |
 | `INSTANCE_NAME` | `Just Send` | Name in the header and page title |
 | `INSTANCE_LOGO` | bundled mark | Logo path relative to the project root |
 | `INSTANCE_ACCENT_COLOR` | `#3b82f6` | Accent color for the interface |

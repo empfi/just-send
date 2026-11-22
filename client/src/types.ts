@@ -65,6 +65,8 @@ export interface InstanceConfig {
   name: string;
   logoUrl: string | null;
   accentColor: string;
+  allowDeleteWorkspace: boolean;
+  allowLeaveWorkspace: boolean;
 }
 
 export interface AuditEntry {

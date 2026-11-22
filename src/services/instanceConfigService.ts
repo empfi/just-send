@@ -11,11 +11,21 @@ export interface InstanceConfig {
   name: string;
   logoUrl: string | null;
   accentColor: string;
+  allowDeleteWorkspace: boolean;
+  allowLeaveWorkspace: boolean;
 }
 
 function textValue(value: string | undefined, fallback: string, maxLength: number): string {
   const trimmed = value?.trim();
   return trimmed ? trimmed.slice(0, maxLength) : fallback;
+}
+
+function booleanValue(value: string | undefined, fallback: boolean): boolean {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) return fallback;
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
 }
 
 function accentValue(value: string | undefined): string {
@@ -45,7 +55,17 @@ export function getInstanceConfig(): InstanceConfig {
     name: textValue(process.env.INSTANCE_NAME, DEFAULT_NAME, 64),
     accentColor: accentValue(process.env.INSTANCE_ACCENT_COLOR),
     logoUrl: resolveLogo() ? '/api/system/logo' : null,
+    allowDeleteWorkspace: isWorkspaceDeletionAllowed(),
+    allowLeaveWorkspace: isWorkspaceLeaveAllowed(),
   };
+}
+
+export function isWorkspaceDeletionAllowed(): boolean {
+  return booleanValue(process.env.ALLOW_DELETE_WORKSPACE, true);
+}
+
+export function isWorkspaceLeaveAllowed(): boolean {
+  return booleanValue(process.env.ALLOW_LEAVE_WORKSPACE, true);
 }
 
 export function getInstanceLogoPath(): string | null {

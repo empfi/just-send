@@ -36,6 +36,8 @@ const DEFAULT_INSTANCE: InstanceConfig = {
   name: 'Just Send',
   logoUrl: null,
   accentColor: '#3b82f6',
+  allowDeleteWorkspace: true,
+  allowLeaveWorkspace: true,
 };
 
 interface AppRoute {
@@ -609,6 +611,10 @@ export default function App() {
 
   const handleDeleteWorkspace = async () => {
     if (!currentWsId) return;
+    if (!instance.allowDeleteWorkspace) {
+      notify('Deleting workspaces is disabled on this instance.', 'error');
+      return;
+    }
     const name = workspaces.find((workspace) => workspace.id === currentWsId)?.name ?? 'this workspace';
     if (
       !window.confirm(
@@ -622,6 +628,38 @@ export default function App() {
       const res = await api.deleteWorkspace(currentWsId);
       if (!res.success) {
         notify(res.error ?? 'Could not delete workspace', 'error');
+        return;
+      }
+      await api.forgetWorkspace(currentWsId);
+
+      for (const known of api.knownWorkspaces()) {
+        if (await api.ensureSession(known.id)) break;
+      }
+      window.location.replace('/');
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
+
+  const handleLeaveWorkspace = async () => {
+    if (!currentWsId) return;
+    if (!instance.allowLeaveWorkspace) {
+      notify('Leaving workspaces is disabled on this instance.', 'error');
+      return;
+    }
+    const name = workspaces.find((workspace) => workspace.id === currentWsId)?.name ?? 'this workspace';
+    if (
+      !window.confirm(
+        `Leave "${name}"? This device has to pair again to open it. The files stay on the server.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await api.leaveWorkspace(currentWsId);
+      if (!res.success) {
+        notify(res.error ?? 'Could not leave workspace', 'error');
         return;
       }
       await api.forgetWorkspace(currentWsId);
@@ -724,6 +762,7 @@ export default function App() {
         onPairDevice={openPair}
         onOpenDevices={openDevices}
         onHome={() => navigate(null)}
+        onLeaveWorkspace={handleLeaveWorkspace}
         onDeleteWorkspace={handleDeleteWorkspace}
       />
 
