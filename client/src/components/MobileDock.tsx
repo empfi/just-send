@@ -25,9 +25,11 @@ export function MobileDock({ tab, onTabChange, onUpload, onConnect }: MobileDock
         <Icon name="clipboard" />
         <span>Clipboard</span>
       </button>
-      <button className="mobile-upload-btn" onClick={onUpload} title="Upload files">
-        <Icon name="upload" />
-      </button>
+      {tab === 'files' ? (
+        <button className="mobile-upload-btn" onClick={onUpload} title="Upload files">
+          <Icon name="upload" />
+        </button>
+      ) : null}
       <button className="mobile-nav-btn" onClick={onConnect} title="Connect device">
         <Icon name="qrcode" />
         <span>Connect</span>

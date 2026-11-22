@@ -705,7 +705,7 @@ export default function App() {
         <MobileDock tab={tab} onTabChange={changeTab} onUpload={openPicker} onConnect={openPair} />
       ) : null}
 
-      {authenticated ? (
+      {authenticated && tab === 'files' ? (
         <button type="button" className="upload-fab" onClick={openPicker} aria-label="Upload files" title="Upload files">
           <Icon name="upload" className="icon" style={{ width: 20, height: 20 }} />
         </button>
