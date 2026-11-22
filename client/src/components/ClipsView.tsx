@@ -43,13 +43,13 @@ export function ClipsView({
       {loading ? (
         <ClipsSkeleton />
       ) : clips.length === 0 ? (
-        <div className="clips-empty">
-          <div className="clips-empty-icon">
+        <div className="empty-state">
+          <div className="empty-state-icon">
             <Icon name="clipboard" className="icon icon-sm" />
           </div>
           <div>
-            <div className="clips-empty-title">No shared snippets yet</div>
-            <div className="clips-empty-desc">
+            <div className="empty-state-title">No shared snippets yet</div>
+            <div className="empty-state-desc">
               Create a snippet to share text with every connected device.
             </div>
           </div>

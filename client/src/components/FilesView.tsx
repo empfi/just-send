@@ -327,9 +327,15 @@ export function FilesView(props: FilesViewProps) {
         <FilesSkeleton view={view} />
       ) : items.length === 0 ? (
         <div className="empty-state">
-          <Icon name="folder" className="icon icon-lg" style={{ color: 'var(--text-muted)' }} />
-          <div className="empty-state-title">This folder is empty</div>
-          <div className="empty-state-desc">Drop files here, choose files, or right-click to create a folder.</div>
+          <div className="empty-state-icon">
+            <Icon name="folder" className="icon icon-sm" />
+          </div>
+          <div>
+            <div className="empty-state-title">This folder is empty</div>
+            <div className="empty-state-desc">
+              Drop files here, choose files, or right-click to create a folder.
+            </div>
+          </div>
         </div>
       ) : view === 'grid' ? (
         <section className="files-grid" onContextMenu={(event) => onContextMenu(event, null)}>
