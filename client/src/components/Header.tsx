@@ -133,15 +133,13 @@ export function Header({
         </div>
 
         <div className="header-right">
-          <button className="btn btn-secondary btn-icon" onClick={onOpenDevices} title="Devices & audit">
-            <Icon name="smartphone" className="icon icon-sm" />
-          </button>
           <button
-            className="btn btn-secondary btn-icon header-pair-btn"
+            className="btn btn-secondary header-pair-btn"
             onClick={onPairDevice}
-            title="Pair device with QR code"
+            title="Connect another device"
           >
             <Icon name="qrcode" className="icon icon-sm" />
+            <span>Connect</span>
           </button>
         </div>
       </div>
