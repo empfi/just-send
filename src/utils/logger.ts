@@ -1,6 +1,3 @@
-import { generateAsciiQr } from '../services/networkService';
-import type { NetworkAddress } from '../services/networkService';
-import { PUBLIC_URL } from '../config';
 
 const colors = {
   reset: '\x1b[0m',
@@ -35,30 +32,11 @@ export function error(msg: string, err?: unknown): void {
   console.error(`${colors.gray}[${time}]${colors.reset} \x1b[31m[ERROR]\x1b[0m ${msg}`, err ?? '');
 }
 
-export async function printBanner(port: number, addresses: NetworkAddress[], primaryIp: string): Promise<void> {
-  const localUrl = `http://localhost:${port}`;
-  const networkUrl = PUBLIC_URL ?? `http://${primaryIp}:${port}`;
-
+export function printBanner(port: number, host: string): void {
   console.log('');
-  if (PUBLIC_URL) {
-    console.log(`  ${colors.bold}Public URL:${colors.reset} ${colors.cyan}${colors.bold}${networkUrl}${colors.reset}`);
-  } else {
-    console.log(`  ${colors.bold}Access on this PC:${colors.reset}   ${colors.green}${localUrl}${colors.reset}`);
-    console.log(`  ${colors.bold}Access on Phone/LAN:${colors.reset} ${colors.cyan}${colors.bold}${networkUrl}${colors.reset}`);
-  }
-
-  if (!PUBLIC_URL && addresses.length > 1) {
-    console.log(`\n  ${colors.dim}Other Available Network Interfaces:${colors.reset}`);
-    addresses.forEach((a) => {
-      console.log(`    - ${a.interface}: ${colors.cyan}http://${a.address}:${port}${colors.reset}`);
-    });
-  }
-
-  console.log('\n  Scan with your phone camera to connect:');
-  const asciiQr = await generateAsciiQr(networkUrl);
-  if (asciiQr) {
-    console.log(asciiQr);
-  }
+  console.log(`  ${colors.bold}Listening on:${colors.reset} ${colors.cyan}${host}:${port}${colors.reset}`);
+  console.log(`  ${colors.bold}Local URL:${colors.reset}    ${colors.green}http://localhost:${port}${colors.reset}`);
+  console.log(`  ${colors.dim}Pair a phone from Connect inside the app.${colors.reset}`);
 }
 
 export { colors };

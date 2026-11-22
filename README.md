@@ -21,7 +21,7 @@ npm run build
 npm start
 ```
 
-Open http://localhost:3456. The terminal also prints the LAN URL and a QR code for connecting a phone on the same Wi-Fi.
+Open http://localhost:3456. The server listens on all interfaces, and the Connect dialog generates pairing links from the address you opened.
 
 ## Development
 
@@ -39,8 +39,6 @@ Copy `.env.example` to `.env` to change the port, host, or upload limit.
 | --- | --- | --- |
 | `PORT` | `3456` | HTTP port |
 | `SERVER_PORT` | unset | Hosting-assigned port; takes precedence over `PORT` |
-| `SERVER_IP` | unset | Hosting-assigned public IP; used with `SERVER_PORT` for pairing links |
-| `PUBLIC_URL` | auto from `SERVER_IP`/`SERVER_PORT` | Public origin used in pairing links and QR codes |
 | `HOST` | `0.0.0.0` | Bind address |
 | `MAX_FILE_SIZE_BYTES` | 50 GB | Per-file upload limit |
 

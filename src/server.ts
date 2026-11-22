@@ -11,7 +11,6 @@ import errorHandler from './middleware/errorHandler';
 import { securityHeaders, sameOriginGuard } from './middleware/security';
 import { requireSession, type AuthedRequest } from './middleware/auth';
 import { printBanner } from './utils/logger';
-import { getNetworkAddresses, getPrimaryLanIp } from './services/networkService';
 
 const app = express();
 
@@ -64,10 +63,8 @@ app.use((req, res, next) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, HOST, async () => {
-  const addresses = getNetworkAddresses();
-  const primaryIp = getPrimaryLanIp();
-  await printBanner(PORT, addresses, primaryIp);
+app.listen(PORT, HOST, () => {
+  printBanner(PORT, HOST);
 });
 
 export default app;
