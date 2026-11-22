@@ -40,7 +40,7 @@ export async function printBanner(port: number, host: string): Promise<void> {
   console.log('');
   console.log(`  ${colors.bold}Listening on:${colors.reset} ${colors.cyan}${host}:${port}${colors.reset}`);
   console.log(`  ${colors.bold}Local URL:${colors.reset}    ${colors.green}http://localhost:${port}${colors.reset}`);
-  console.log(`  ${colors.bold}Phone/LAN URL:${colors.reset} ${colors.cyan}${origin}${colors.reset}`);
+  console.log(`  ${colors.bold}LAN URL:${colors.reset}      ${colors.cyan}${origin}${colors.reset}`);
 
   console.log('\n  Scan to open the app on another device:');
   const asciiQr = await generateAsciiQr(origin);
