@@ -95,6 +95,7 @@ export default function App() {
   const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([]);
   const [clips, setClips] = useState<Clip[]>([]);
   const [clipsLoading, setClipsLoading] = useState(false);
+  const [clipComposerOpen, setClipComposerOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [workspacesLoading, setWorkspacesLoading] = useState(true);
   const [hasWorkspaces, setHasWorkspaces] = useState(false);
@@ -170,6 +171,7 @@ export default function App() {
   }, []);
 
   const changeTab = (next: Tab) => {
+    setClipComposerOpen(false);
     setTab(next);
     const path = next === 'clips' ? '/clips' : folderId ? `/folder/${folderId}` : '/files';
     if (window.location.pathname !== path) history.pushState(null, '', path);
@@ -726,13 +728,21 @@ export default function App() {
               onAdd={addClip}
               onDelete={deleteClip}
               onCopied={(ok) => notify(ok ? 'Snippet copied' : 'Unable to copy snippet', ok ? 'success' : 'error')}
+              composerOpen={clipComposerOpen}
+              onComposerOpenChange={setClipComposerOpen}
             />
           )
         ) : null}
       </main>
 
       {authenticated ? (
-        <MobileDock tab={tab} onTabChange={changeTab} onUpload={openPicker} onConnect={openPair} />
+        <MobileDock
+          tab={tab}
+          onTabChange={changeTab}
+          onUpload={openPicker}
+          onCreateClip={() => setClipComposerOpen(true)}
+          onConnect={openPair}
+        />
       ) : null}
 
       {authenticated && tab === 'files' ? (

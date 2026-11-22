@@ -11,12 +11,21 @@ interface ClipsViewProps {
   onAdd: (content: string) => Promise<boolean>;
   onDelete: (id: string) => void;
   onCopied: (ok: boolean) => void;
+  composerOpen: boolean;
+  onComposerOpenChange: (open: boolean) => void;
 }
 
-export function ClipsView({ clips, loading, onAdd, onDelete, onCopied }: ClipsViewProps) {
+export function ClipsView({
+  clips,
+  loading,
+  onAdd,
+  onDelete,
+  onCopied,
+  composerOpen,
+  onComposerOpenChange,
+}: ClipsViewProps) {
   const [value, setValue] = useState('');
   const [sending, setSending] = useState(false);
-  const [open, setOpen] = useState(false);
 
   const submit = async () => {
     if (!value.trim() || sending) return;
@@ -24,7 +33,7 @@ export function ClipsView({ clips, loading, onAdd, onDelete, onCopied }: ClipsVi
     const ok = await onAdd(value.trim());
     if (ok) {
       setValue('');
-      setOpen(false);
+      onComposerOpenChange(false);
     }
     setSending(false);
   };
@@ -87,7 +96,7 @@ export function ClipsView({ clips, loading, onAdd, onDelete, onCopied }: ClipsVi
       <button
         type="button"
         className="clip-fab"
-        onClick={() => setOpen(true)}
+        onClick={() => onComposerOpenChange(true)}
         aria-label="Create snippet"
         title="Create snippet"
       >
@@ -95,8 +104,8 @@ export function ClipsView({ clips, loading, onAdd, onDelete, onCopied }: ClipsVi
       </button>
 
       <Sheet
-        open={open}
-        onClose={() => setOpen(false)}
+        open={composerOpen}
+        onClose={() => onComposerOpenChange(false)}
         title="New snippet"
         icon="clipboard"
         footer={
