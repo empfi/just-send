@@ -7,6 +7,7 @@ import type {
   InstanceConfig,
   Item,
   PairingInfo,
+  ShareSummary,
   Workspace,
 } from './types';
 import {
@@ -445,7 +446,29 @@ export const api = {
     });
   },
 
-  async deleteFile(id: string): Promise<ApiResponse<null>> {
+  async createShare(input: {
+    itemIds: string[];
+    hours: number;
+    password?: string;
+    maxDownloads?: number | null;
+    allowDownload: boolean;
+  }): Promise<ApiResponse<ShareSummary>> {
+    return request<ShareSummary>('/api/shares', jsonInit(input));
+  },
+
+  async listShares(): Promise<ApiResponse<ShareSummary[]>> {
+    return request<ShareSummary[]>('/api/shares');
+  },
+
+  async revokeShare(id: string): Promise<ApiResponse<null>> {
+    return request<null>(`/api/shares/${id}`, { method: 'DELETE', credentials: 'same-origin' });
+  },
+
+  shareUrl(id: string): string {
+    return `${window.location.origin}/s/${id}`;
+  },
+
+  deleteFile(id: string): Promise<ApiResponse<null>> {
     return request<null>(`/api/files/${id}`, { method: 'DELETE', credentials: 'same-origin' });
   },
 

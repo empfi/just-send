@@ -28,6 +28,8 @@ const AUDIT_LABELS: Record<string, string> = {
   workspace_recovered: 'Workspace recovered',
   workspace_left: 'Workspace left',
   master_action_denied: 'Master-only action denied',
+  share_created: 'Share link created',
+  share_revoked: 'Share link revoked',
 };
 
 function auditLabel(event: string): string {

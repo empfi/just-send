@@ -18,6 +18,7 @@ import { PairSheet } from './components/modals/PairSheet';
 import { QrScanSheet } from './components/modals/QrScanSheet';
 import { PreviewSheet } from './components/modals/PreviewSheet';
 import { DevicesSheet } from './components/modals/DevicesSheet';
+import { ShareSheet } from './components/modals/ShareSheet';
 
 interface Toast {
   id: number;
@@ -120,6 +121,7 @@ export default function App() {
   const [previewItem, setPreviewItem] = useState<Item | null>(null);
   const [qrScan, setQrScan] = useState<{ workspaceId: string; token: string } | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [shareIds, setShareIds] = useState<string[] | null>(null);
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const previewUrlRef = useRef<string | null>(null);
   const uploadRunId = useRef(0);
@@ -866,6 +868,7 @@ export default function App() {
             onSelectAll={(checked) => setSelected(checked ? new Set(items.map((i) => i.id)) : new Set())}
             onClearSelection={() => setSelected(new Set())}
             onCreateFolder={createFolder}
+            onBatchShare={() => setShareIds(Array.from(selected))}
             onBatchDownload={batchDownload}
             onBatchDelete={batchDelete}
             onContextMenu={openContext}
@@ -962,6 +965,12 @@ export default function App() {
         />
       ) : null}
       <PreviewSheet open={modal === 'preview'} item={previewItem} onClose={closePreview} />
+      <ShareSheet
+        open={shareIds !== null}
+        itemIds={shareIds ?? []}
+        notify={notify}
+        onClose={() => setShareIds(null)}
+      />
       <DevicesSheet
         open={authenticated && modal === 'devices'}
         workspaceId={currentWsId}
@@ -1011,6 +1020,16 @@ export default function App() {
                   <span>Copy direct link</span>
                 </button>
               )}
+              <button
+                className="context-item"
+                onClick={() => {
+                  setShareIds([context.item!.id]);
+                  setContext(null);
+                }}
+              >
+                <Icon name="send" className="icon icon-sm" />
+                <span>Share publicly</span>
+              </button>
               <button className="context-item" onClick={() => { void renameItem(context.item!); setContext(null); }}>
                 <Icon name="edit" className="icon icon-sm" />
                 <span>Rename</span>

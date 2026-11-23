@@ -5,6 +5,7 @@ import upload from '../middleware/upload';
 import fileService from '../services/fileService';
 import textClipService from '../services/textClipService';
 import { requireSession, authed } from '../middleware/auth';
+import { streamStoredFile } from '../utils/fileStream';
 
 const router = express.Router();
 
@@ -136,60 +137,14 @@ router.get('/files/:id/preview', requireSession, async (req, res) => {
       return;
     }
 
-    const filePath = file.fullPath;
-    let stat: fs.Stats;
-    try {
-      stat = await fs.promises.stat(filePath);
-    } catch {
-      res.status(404).json({ success: false, error: 'File not found' });
-      return;
-    }
-
-    const fileSize = stat.size;
     const contentType = file.mimeType || mime.lookup(file.originalName) || 'application/octet-stream';
-    // Previews never change in place, so browsers and grids can reuse them.
-    const etag = `W/"${fileSize.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
-
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Cache-Control', 'private, max-age=86400');
-    res.setHeader('ETag', etag);
-    res.setHeader('Last-Modified', stat.mtime.toUTCString());
-    // File previews are embedded by this same app (PDF viewer, media), so allow
-    // same-origin framing instead of the app-wide DENY.
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
-
-    if (!req.headers.range && req.headers['if-none-match'] === etag) {
-      res.status(304).end();
-      return;
-    }
-
-    const range = req.headers.range;
-    if (range) {
-      const parts = range.replace(/bytes=/, '').split('-');
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-      if (start >= fileSize || end >= fileSize) {
-        res.status(416).setHeader('Content-Range', `bytes */${fileSize}`);
-        res.end();
-        return;
-      }
-
-      const chunksize = end - start + 1;
-      const fileStream = fs.createReadStream(filePath, { start, end });
-      res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunksize,
-        'Content-Type': contentType,
-      });
-      fileStream.pipe(res);
-    } else {
-      res.setHeader('Content-Length', fileSize);
-      fs.createReadStream(filePath).pipe(res);
-    }
+    await streamStoredFile(req, res, {
+      filePath: file.fullPath,
+      contentType,
+      name: file.originalName,
+      disposition: 'inline',
+      allowFraming: true,
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: (err as Error).message });
   }

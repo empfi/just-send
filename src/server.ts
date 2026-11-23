@@ -6,6 +6,8 @@ import apiRoutes from './routes/api';
 import authRoutes from './routes/auth';
 import systemRoutes from './routes/system';
 import workspaceRoutes from './routes/workspaces';
+import shareRoutes from './routes/shares';
+import publicRoutes from './routes/public';
 import sseService from './services/sseService';
 import errorHandler from './middleware/errorHandler';
 import requestLogger from './middleware/requestLogger';
@@ -62,6 +64,8 @@ app.use('/api', authRoutes);
 app.use('/api', apiRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/workspaces', workspaceRoutes);
+app.use('/api/shares', shareRoutes);
+app.use('/api/public', publicRoutes);
 
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api')) {

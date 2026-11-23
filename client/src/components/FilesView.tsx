@@ -31,6 +31,7 @@ interface FilesViewProps {
   onSelectAll: (checked: boolean) => void;
   onClearSelection: () => void;
   onCreateFolder: () => void;
+  onBatchShare: () => void;
   onBatchDownload: () => void;
   onBatchDelete: () => void;
   onContextMenu: (event: ReactMouseEvent, item: Item | null) => void;
@@ -101,6 +102,7 @@ export function FilesView(props: FilesViewProps) {
     onSelectAll,
     onClearSelection,
     onCreateFolder,
+    onBatchShare,
     onBatchDownload,
     onBatchDelete,
     onContextMenu,
@@ -550,13 +552,17 @@ export function FilesView(props: FilesViewProps) {
             </button>
           </div>
           <div className="batch-actions">
+            <button className="btn btn-primary" onClick={onBatchShare}>
+              <Icon name="link" className="icon icon-sm" />
+              Share
+            </button>
             <button className="btn btn-secondary" onClick={onBatchDownload}>
               <Icon name="download" className="icon icon-sm" />
-              Download ZIP
+              <span className="batch-action-label">Download ZIP</span>
             </button>
             <button className="btn btn-danger" onClick={onBatchDelete}>
               <Icon name="trash" className="icon icon-sm" />
-              Delete
+              <span className="batch-action-label">Delete</span>
             </button>
           </div>
         </div>

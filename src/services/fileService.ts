@@ -245,6 +245,31 @@ class FileService {
     return list;
   }
 
+  // Flattens the selected items into the files a share link will serve, keeping
+  // folder names so nested selections stay readable in the public list.
+  collectShareFiles(workspaceId: string, ids: string[]): Array<{ itemId: string; displayPath: string }> {
+    const meta = this.loadMetadata(workspaceId);
+    const out: Array<{ itemId: string; displayPath: string }> = [];
+    const seen = new Set<string>();
+
+    const walk = (id: string, prefix: string): void => {
+      const item = meta[id];
+      if (!item || seen.has(id)) return;
+      seen.add(id);
+      const displayPath = prefix ? `${prefix}/${item.originalName}` : item.originalName;
+      if (!item.isFolder) {
+        out.push({ itemId: item.id, displayPath });
+        return;
+      }
+      for (const child of Object.values(meta)) {
+        if (child.folderId === item.id) walk(child.id, displayPath);
+      }
+    };
+
+    for (const id of ids) walk(id, '');
+    return out;
+  }
+
   getBreadcrumbs(workspaceId: string, folderId: string): Array<{ id: string; name: string }> {
     const meta = this.loadMetadata(workspaceId);
     const crumbs: Array<{ id: string; name: string }> = [];

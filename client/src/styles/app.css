@@ -1297,26 +1297,36 @@ body.app-loading .app-main {
   align-items: center;
   gap: var(--space-3);
 }
-.preview-pdf-wrap {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+/* Kept inside the 480px stage cap; the open button lives outside it. */
 .preview-pdf {
   width: 100%;
-  height: 460px;
+  height: min(440px, 52vh);
   border: none;
+  border-radius: var(--radius-control);
   background: var(--bg-deep);
 }
+.preview-pdf-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 .preview-pdf-open {
-  margin-top: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-3);
+  padding: 7px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  color: var(--text-primary);
   font-size: 12px;
-  color: var(--text-secondary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
 }
 .preview-pdf-open:hover {
+  background: var(--bg-raised-hover);
+  border-color: var(--border-strong);
   color: var(--text-primary);
 }
 .preview-pdf-card {
@@ -2334,6 +2344,419 @@ body.app-loading .app-main {
   contain-intrinsic-size: auto 300px;
 }
 
+/* Share sheet */
+.share-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.share-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.share-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.share-chip {
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 5px 11px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.share-chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+.share-chip.active {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--bg-deep);
+}
+.share-hours-input,
+.share-link-input {
+  font-size: 12px;
+}
+.share-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-control);
+  background: var(--bg-raised);
+  cursor: pointer;
+}
+.share-toggle input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+.share-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.share-toggle-title {
+  font-size: 12px;
+  font-weight: 500;
+}
+.share-toggle-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.share-created {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-card);
+  background: var(--bg-raised);
+}
+.share-created-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.share-created-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.14);
+  color: var(--status-positive);
+  flex: none;
+}
+.share-created-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+.share-created-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.share-link-row {
+  display: flex;
+  gap: 6px;
+}
+.share-link-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+}
+.share-created-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.text-danger {
+  color: var(--status-negative);
+}
+.share-existing {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--border-hairline);
+  padding-top: 12px;
+}
+.share-existing-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+.share-existing-loading,
+.share-existing-empty {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 6px 0;
+}
+.share-existing-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.share-existing-row:last-child {
+  border-bottom: none;
+}
+.share-existing-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.share-existing-title {
+  font-size: 12px;
+}
+.share-existing-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.share-existing-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+/* Public share page */
+.public-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+  color: var(--text-primary);
+}
+.public-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-hairline);
+  background: rgba(15, 15, 16, 0.92);
+  backdrop-filter: blur(12px);
+}
+.public-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.public-brand-logo {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.public-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+}
+.public-brand-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.public-expiry {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.public-main {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+.public-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: 16px;
+  padding: 16px;
+}
+.public-state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 40px 24px;
+  text-align: center;
+}
+.public-state-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.public-state-desc {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.public-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  max-width: 380px;
+  margin: 6vh auto 0;
+}
+.public-locked-icon {
+  display: flex;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+.public-locked .public-state-title,
+.public-locked .public-state-desc {
+  text-align: center;
+}
+.public-error {
+  font-size: 12px;
+  color: var(--status-negative);
+  padding: 4px 0;
+}
+.public-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.public-card-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.public-card-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.public-files {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.public-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-hairline);
+}
+.public-file:first-child {
+  border-top: none;
+}
+.public-file-icon {
+  flex: none;
+}
+.public-file-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.public-file-name {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.public-file-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.public-file-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+.public-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(8, 8, 9, 0.82);
+  backdrop-filter: blur(10px);
+}
+.public-preview-window {
+  display: flex;
+  flex-direction: column;
+  width: min(880px, 100%);
+  max-height: 90vh;
+  overflow: hidden;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+}
+.public-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-hairline);
+}
+.public-preview-title {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.public-preview-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: auto;
+}
+.public-preview-pdf {
+  width: 100%;
+  height: min(70vh, 640px);
+  border: none;
+  background: var(--bg-deep);
+}
+.public-preview .preview-image {
+  max-height: 70vh;
+}
+
+@media (max-width: 640px) {
+  .public-header {
+    padding: 12px 14px;
+  }
+  .public-expiry {
+    display: none;
+  }
+  .public-main {
+    padding: 16px 12px 32px;
+  }
+  .public-card {
+    padding: 14px;
+    border-radius: 14px;
+  }
+  .public-preview {
+    padding: 0;
+  }
+  .public-preview-window {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+    border: none;
+  }
+}
+
 @media (max-width: 640px) {
   .file-card {
     contain-intrinsic-size: auto 88px;
@@ -2371,5 +2794,57 @@ body.app-loading .app-main {
     max-width: none;
     bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom) + var(--space-2));
     z-index: 54;
+  }
+}
+
+@media (max-width: 640px) {
+  /* Bulk actions get two tidy rows so the new Share button never overflows. */
+  .batch-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+  .batch-info {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  .batch-actions {
+    width: 100%;
+    gap: 6px;
+  }
+  .batch-actions .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  /* Selection needs a thumb-sized target, not a 16px box. */
+  .file-card .checkbox {
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    margin-left: -7px;
+  }
+  .file-card .checkbox-box {
+    width: 20px;
+    height: 20px;
+  }
+  .files-list-table .checkbox {
+    width: 26px;
+    height: 26px;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 360px) {
+  .batch-actions .btn .batch-action-label {
+    display: none;
   }
 }

@@ -101,5 +101,37 @@ export type ModalKind =
 
 export type Tab = 'files' | 'clips';
 
+export interface ShareSummary {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  fileCount: number;
+  files: string[];
+  passwordProtected: boolean;
+  maxDownloads: number | null;
+  downloadCount: number;
+  allowDownload: boolean;
+}
+
+export interface PublicShareFile {
+  id: string;
+  name: string;
+  size: number;
+  formattedSize: string;
+  mimeType: string;
+  category: FileCategory;
+}
+
+export interface PublicShare {
+  id: string;
+  createdAt: string;
+  expiresAt: string;
+  allowDownload: boolean;
+  downloadCount: number;
+  maxDownloads: number | null;
+  passwordProtected: boolean;
+  files: PublicShareFile[];
+}
+
 export type ToastKind = 'success' | 'error' | 'info';
 export type Notify = (message: string, kind?: ToastKind) => void;

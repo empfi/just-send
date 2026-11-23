@@ -108,17 +108,7 @@ export function PreviewSheet({ open, item, onClose }: Props) {
           </div>
         ) : item.mimeType === 'application/pdf' ? (
           canEmbedPdfInline() ? (
-            <div className="preview-pdf-wrap">
-              <iframe src={previewUrl} title={item.originalName} className="preview-pdf" />
-              <a
-                className="preview-pdf-open"
-                href={previewUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open PDF in a new tab
-              </a>
-            </div>
+            <iframe src={previewUrl} title={item.originalName} className="preview-pdf" />
           ) : (
             <div className="preview-pdf-card">
               <FileTypeIcon
@@ -163,6 +153,14 @@ export function PreviewSheet({ open, item, onClose }: Props) {
           </div>
         )}
       </div>
+
+      {item.mimeType === 'application/pdf' && canEmbedPdfInline() ? (
+        <div className="preview-pdf-actions">
+          <a className="preview-pdf-open" href={previewUrl} target="_blank" rel="noreferrer">
+            Open PDF in a new tab
+          </a>
+        </div>
+      ) : null}
 
       <div className="preview-meta tabular">
         <div>
