@@ -64,3 +64,19 @@ export async function copyText(text: string): Promise<boolean> {
 export function isMobileViewport(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
 }
+
+// Invisible, control and private-use characters show up as empty boxes in the UI.
+export function displayName(name: string): string {
+  const cleaned = name
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff\ue000-\uf8ff\ufff9-\ufffb]/g, '')
+    .trim();
+  return cleaned || name;
+}
+
+// Phone browsers show an empty frame for PDFs, so they get an open button instead.
+export function canEmbedPdfInline(): boolean {
+  const ua = navigator.userAgent;
+  if (/Android|iPhone|iPad|iPod/i.test(ua)) return false;
+  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return false;
+  return true;
+}

@@ -155,6 +155,10 @@ router.get('/files/:id/preview', requireSession, async (req, res) => {
     res.setHeader('Cache-Control', 'private, max-age=86400');
     res.setHeader('ETag', etag);
     res.setHeader('Last-Modified', stat.mtime.toUTCString());
+    // File previews are embedded by this same app (PDF viewer, media), so allow
+    // same-origin framing instead of the app-wide DENY.
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
 
     if (!req.headers.range && req.headers['if-none-match'] === etag) {
       res.status(304).end();

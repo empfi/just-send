@@ -438,24 +438,55 @@ export default function App() {
         }, delay);
 
       setProgress({ fileName: first.name, count: files.length, percent: 0, status: 'uploading', previewUrl, previewKind });
-      // Phones hand over whole camera rolls at once. Small batches keep the request
-      // body and memory bounded, and one bad batch no longer sinks the whole upload.
+      // Small batches keep memory bounded on phones, and a few batches run at the
+      // same time so requests are not queued one round trip behind another.
       const BATCH_SIZE = 4;
+      const CONCURRENCY = 3;
+      const batches: File[][] = [];
+      for (let index = 0; index < files.length; index += BATCH_SIZE) {
+        batches.push(files.slice(index, index + BATCH_SIZE));
+      }
+
+      const fractions = new Map<number, number>();
+      const failures: Error[] = [];
       const uploaded: Item[] = [];
-      try {
-        for (let index = 0; index < files.length; index += BATCH_SIZE) {
-          const batch = files.slice(index, index + BATCH_SIZE);
+      let nextBatch = 0;
+
+      const reportProgress = () => {
+        let finished = 0;
+        for (const fraction of fractions.values()) finished += fraction;
+        const percent = Math.min(99, Math.round((finished / batches.length) * 100));
+        setProgress((current) => (current ? { ...current, percent } : current));
+      };
+
+      const runBatch = async (batchIndex: number): Promise<void> => {
+        const batch = batches[batchIndex];
+        try {
           const res = await api.uploadFiles(batch, folderId, (percent) => {
-            const batchProgress = index + Math.round((percent / 100) * batch.length);
-            setProgress((current) =>
-              current
-                ? { ...current, percent: Math.min(99, Math.round((batchProgress / files.length) * 100)) }
-                : current
-            );
+            fractions.set(batchIndex, percent / 100);
+            reportProgress();
           });
           if (!res.success) throw new Error(res.error ?? 'Upload failed');
+          fractions.set(batchIndex, 1);
           uploaded.push(...(res.data ?? []));
+          reportProgress();
+        } catch (err) {
+          failures.push(err as Error);
         }
+      };
+
+      const worker = async (): Promise<void> => {
+        while (failures.length === 0 && nextBatch < batches.length) {
+          const batchIndex = nextBatch++;
+          await runBatch(batchIndex);
+        }
+      };
+
+      try {
+        await Promise.all(
+          Array.from({ length: Math.min(CONCURRENCY, batches.length) }, () => worker())
+        );
+        if (failures.length > 0) throw failures[0];
         setProgress((current) => (current ? { ...current, percent: 100, status: 'done' } : current));
         notify(`Uploaded ${files.length} file${files.length === 1 ? '' : 's'}`, 'success');
         scheduleReload();

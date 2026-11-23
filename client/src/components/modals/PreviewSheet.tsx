@@ -5,6 +5,7 @@ import { Icon } from '../Icon';
 import { FileTypeIcon } from '../FileTypeIcon';
 import { Sheet } from '../Sheet';
 import { PreviewSkeleton } from '../Skeletons';
+import { canEmbedPdfInline, displayName } from '../../utils';
 
 interface Props {
   open: boolean;
@@ -65,7 +66,7 @@ export function PreviewSheet({ open, item, onClose }: Props) {
     <Sheet
       open={open}
       onClose={onClose}
-      title={item.originalName}
+      title={displayName(item.originalName)}
       large
       showClose={false}
       headerAction={
@@ -106,7 +107,37 @@ export function PreviewSheet({ open, item, onClose }: Props) {
             </audio>
           </div>
         ) : item.mimeType === 'application/pdf' ? (
-          <iframe src={previewUrl} title={item.originalName} style={{ width: '100%', height: 460, border: 'none' }} />
+          canEmbedPdfInline() ? (
+            <div className="preview-pdf-wrap">
+              <iframe src={previewUrl} title={item.originalName} className="preview-pdf" />
+              <a
+                className="preview-pdf-open"
+                href={previewUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open PDF in a new tab
+              </a>
+            </div>
+          ) : (
+            <div className="preview-pdf-card">
+              <FileTypeIcon
+                name={item.originalName}
+                category={item.category}
+                className="preview-pdf-icon"
+              />
+              <div className="preview-pdf-name">{displayName(item.originalName)}</div>
+              <div className="preview-pdf-size tabular">{item.formattedSize} · PDF document</div>
+              <a
+                className="btn btn-primary"
+                href={previewUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open PDF
+              </a>
+            </div>
+          )
         ) : isText ? (
           loadingText ? (
             <div className="preview-code-wrap">
@@ -133,22 +164,19 @@ export function PreviewSheet({ open, item, onClose }: Props) {
         )}
       </div>
 
-      <div
-        className="tabular"
-        style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}
-      >
+      <div className="preview-meta tabular">
         <div>
-          <span style={{ color: 'var(--text-secondary)' }}>Size:</span> {item.formattedSize}
+          <span className="preview-meta-label">Size:</span> {item.formattedSize}
         </div>
         <div>
-          <span style={{ color: 'var(--text-secondary)' }}>Type:</span> {item.mimeType}
+          <span className="preview-meta-label">Type:</span> {item.mimeType}
         </div>
         <div>
-          <span style={{ color: 'var(--text-secondary)' }}>Uploaded:</span>{' '}
+          <span className="preview-meta-label">Uploaded:</span>{' '}
           {new Date(item.uploadedAt).toLocaleString()}
         </div>
         <div>
-          <span style={{ color: 'var(--text-secondary)' }}>Downloads:</span> {item.downloadCount || 0}
+          <span className="preview-meta-label">Downloads:</span> {item.downloadCount || 0}
         </div>
       </div>
     </Sheet>
