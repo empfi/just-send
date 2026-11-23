@@ -123,6 +123,8 @@ export default function App() {
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const previewUrlRef = useRef<string | null>(null);
   const uploadRunId = useRef(0);
+  const toastSeq = useRef(0);
+  const reloadTimer = useRef<number | undefined>(undefined);
   const [reloadTick, setReloadTick] = useState(0);
   const [context, setContext] = useState<ContextState | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -131,9 +133,18 @@ export default function App() {
   const dragDepth = useRef(0);
 
   const notify = useCallback((message: string, kind: ToastKind = 'info') => {
-    const id = Date.now() + Math.random();
-    setToasts((current) => [...current, { id, message, kind }]);
-    window.setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 2800);
+    const id = ++toastSeq.current;
+    // Never stack more than three, so phones keep a single readable strip.
+    setToasts((current) => [...current.slice(-2), { id, message, kind }]);
+    window.setTimeout(
+      () => setToasts((current) => current.filter((t) => t.id !== id)),
+      kind === 'error' ? 4200 : 2600
+    );
+  }, []);
+
+  const scheduleReload = useCallback(() => {
+    window.clearTimeout(reloadTimer.current);
+    reloadTimer.current = window.setTimeout(() => setReloadTick((tick) => tick + 1), 300);
   }, []);
 
   useEffect(() => {
@@ -387,7 +398,7 @@ export default function App() {
           data.type === 'clip:added' ||
           data.type === 'clip:deleted'
         ) {
-          setReloadTick((tick) => tick + 1);
+          scheduleReload();
         }
         if (data.type === 'workspace:created' || data.type === 'workspace:device_added') {
           void loadWorkspaces();
@@ -397,7 +408,7 @@ export default function App() {
     };
     source.onerror = () => undefined;
     return () => source.close();
-  }, [authenticated, loadWorkspaces, currentWsId]);
+  }, [authenticated, loadWorkspaces, currentWsId, scheduleReload]);
 
   const clearUpload = useCallback(() => {
     if (previewUrlRef.current) {
@@ -427,30 +438,53 @@ export default function App() {
         }, delay);
 
       setProgress({ fileName: first.name, count: files.length, percent: 0, status: 'uploading', previewUrl, previewKind });
+      // Phones hand over whole camera rolls at once. Small batches keep the request
+      // body and memory bounded, and one bad batch no longer sinks the whole upload.
+      const BATCH_SIZE = 4;
+      const uploaded: Item[] = [];
       try {
-        const res = await api.uploadFiles(files, folderId, (percent) =>
-          setProgress((current) => (current ? { ...current, percent } : current))
-        );
-        if (!res.success) throw new Error(res.error ?? 'Upload failed');
+        for (let index = 0; index < files.length; index += BATCH_SIZE) {
+          const batch = files.slice(index, index + BATCH_SIZE);
+          const res = await api.uploadFiles(batch, folderId, (percent) => {
+            const batchProgress = index + Math.round((percent / 100) * batch.length);
+            setProgress((current) =>
+              current
+                ? { ...current, percent: Math.min(99, Math.round((batchProgress / files.length) * 100)) }
+                : current
+            );
+          });
+          if (!res.success) throw new Error(res.error ?? 'Upload failed');
+          uploaded.push(...(res.data ?? []));
+        }
         setProgress((current) => (current ? { ...current, percent: 100, status: 'done' } : current));
         notify(`Uploaded ${files.length} file${files.length === 1 ? '' : 's'}`, 'success');
-        setReloadTick((tick) => tick + 1);
+        scheduleReload();
         finish(4200);
       } catch (err) {
         const message = (err as Error).message;
         setProgress((current) => (current ? { ...current, status: 'error', error: message } : current));
-        notify(message, 'error');
+        notify(
+          uploaded.length
+            ? `Uploaded ${uploaded.length} of ${files.length} files. ${message}`
+            : message,
+          'error'
+        );
+        if (uploaded.length) scheduleReload();
         finish(6000);
       }
     },
-    [currentWsId, folderId, notify, clearUpload]
+    [currentWsId, folderId, notify, clearUpload, scheduleReload]
   );
 
   const openPicker = () => fileInputRef.current?.click();
 
   const onFileInputChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []);
-    event.target.value = '';
+    const input = event.currentTarget;
+    const files = Array.from(input.files ?? []);
+    // Clearing later lets iOS finish reading the selection it just handed over.
+    window.setTimeout(() => {
+      input.value = '';
+    }, 0);
     void startUpload(files);
   };
 
@@ -778,7 +812,6 @@ export default function App() {
             loading={filesLoading && items.length === 0}
             breadcrumbs={breadcrumbs}
             folderId={folderId}
-            search={search}
             sort={sort}
             view={view}
             selected={selected}
@@ -840,7 +873,9 @@ export default function App() {
         ref={fileInputRef}
         type="file"
         multiple
-        style={{ display: 'none' }}
+        className="file-input-hidden"
+        tabIndex={-1}
+        aria-hidden="true"
         onChange={onFileInputChange}
       />
 
@@ -979,7 +1014,7 @@ export default function App() {
         </div>
       ) : null}
 
-      <div className="toast-container">
+      <div className="toast-container" role="status" aria-live="polite">
         {toasts.map((toast) => (
           <div key={toast.id} className={`toast toast-${toast.kind}`}>
             <Icon

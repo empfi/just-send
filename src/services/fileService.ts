@@ -37,7 +37,8 @@ class FileService {
     const data = this.metadataCache.get(workspaceId) || {};
     const metaFile = workspaceService.getWorkspaceMetaFile(workspaceId);
     try {
-      fs.writeFileSync(metaFile, JSON.stringify(data, null, 2), 'utf8');
+      // Machines read this file, so skip the pretty printing and save the bytes.
+      fs.writeFileSync(metaFile, JSON.stringify(data), 'utf8');
     } catch (err) {
       console.error(`Error saving metadata for workspace ${workspaceId}:`, err);
     }
@@ -48,33 +49,36 @@ class FileService {
       const uploadsDir = workspaceService.getWorkspaceUploadsDir(workspaceId);
       const files = fs.readdirSync(uploadsDir);
       const meta = this.metadataCache.get(workspaceId) || {};
+      const knownNames = new Set(
+        Object.values(meta)
+          .filter((m) => !m.isFolder && m.storedName)
+          .map((m) => m.storedName as string)
+      );
       let changed = false;
 
       for (const file of files) {
-        if (file === '.gitkeep') continue;
+        if (file === '.gitkeep' || knownNames.has(file)) continue;
         const filePath = path.join(uploadsDir, file);
         const stats = fs.statSync(filePath);
         if (!stats.isFile()) continue;
 
-        const exists = Object.values(meta).some((m) => !m.isFolder && m.storedName === file);
-        if (!exists) {
-          const id = crypto.randomUUID();
-          const mimeType = mime.lookup(file) || 'application/octet-stream';
-          meta[id] = {
-            id,
-            workspaceId,
-            isFolder: false,
-            folderId: null,
-            originalName: file,
-            storedName: file,
-            size: stats.size,
-            mimeType,
-            category: getFileCategory(file, mimeType),
-            uploadedAt: stats.birthtime ? stats.birthtime.toISOString() : new Date().toISOString(),
-            downloadCount: 0,
-          };
-          changed = true;
-        }
+        const id = crypto.randomUUID();
+        const mimeType = mime.lookup(file) || 'application/octet-stream';
+        meta[id] = {
+          id,
+          workspaceId,
+          isFolder: false,
+          folderId: null,
+          originalName: file,
+          storedName: file,
+          size: stats.size,
+          mimeType,
+          category: getFileCategory(file, mimeType),
+          uploadedAt: stats.birthtime ? stats.birthtime.toISOString() : new Date().toISOString(),
+          downloadCount: 0,
+        };
+        knownNames.add(file);
+        changed = true;
       }
 
       for (const [id, m] of Object.entries(meta)) {
@@ -120,40 +124,57 @@ class FileService {
     return folder;
   }
 
-  addFile(
+  private buildRecord(
     workspaceId: string,
     multerFile: Express.Multer.File,
-    folderId: string | null = null,
-    uploaderDeviceId: string | null = null
+    folderId: string | null,
+    uploaderDeviceId: string | null
   ): StoredItem {
-    const meta = this.loadMetadata(workspaceId);
-    const id = crypto.randomUUID();
     const originalName = sanitizeFilename(multerFile.originalname);
-    const storedName = multerFile.filename;
-    const size = multerFile.size;
     const mimeType = multerFile.mimetype || mime.lookup(originalName) || 'application/octet-stream';
     const category: FileCategory = getFileCategory(originalName, mimeType);
 
-    const record: StoredItem = {
-      id,
+    return {
+      id: crypto.randomUUID(),
       workspaceId,
       isFolder: false,
       folderId: folderId || null,
       originalName,
-      storedName,
-      size,
-      formattedSize: formatBytes(size),
+      storedName: multerFile.filename,
+      size: multerFile.size,
+      formattedSize: formatBytes(multerFile.size),
       mimeType,
       category,
       uploadedAt: new Date().toISOString(),
       downloadCount: 0,
       uploaderDeviceId,
     };
+  }
 
-    meta[id] = record;
+  addFiles(
+    workspaceId: string,
+    multerFiles: Express.Multer.File[],
+    folderId: string | null = null,
+    uploaderDeviceId: string | null = null
+  ): StoredItem[] {
+    if (multerFiles.length === 0) return [];
+
+    const meta = this.loadMetadata(workspaceId);
+    const records = multerFiles.map((file) => this.buildRecord(workspaceId, file, folderId, uploaderDeviceId));
+    for (const record of records) meta[record.id] = record;
+    // One metadata write per upload batch instead of one per file.
     this.saveMetadata(workspaceId);
-    sseService.broadcast('file:uploaded', { workspaceId, item: record });
-    return record;
+    for (const record of records) sseService.broadcast('file:uploaded', { workspaceId, item: record });
+    return records;
+  }
+
+  addFile(
+    workspaceId: string,
+    multerFile: Express.Multer.File,
+    folderId: string | null = null,
+    uploaderDeviceId: string | null = null
+  ): StoredItem {
+    return this.addFiles(workspaceId, [multerFile], folderId, uploaderDeviceId)[0];
   }
 
   getItems(
@@ -166,35 +187,40 @@ class FileService {
     } = {}
   ): StoredItem[] {
     const meta = this.loadMetadata(workspaceId);
-    let list: StoredItem[] = Object.values(meta).map((f) => ({
-      ...f,
-      formattedSize: f.isFolder ? '--' : formatBytes(f.size),
-    }));
+    const entries = Object.values(meta);
+    const q = search.trim().toLowerCase();
+    const targetFolder = folderId && folderId !== 'null' && folderId !== 'root' ? folderId : null;
 
-    if (search && search.trim()) {
-      const q = search.trim().toLowerCase();
-      list = list.filter(
-        (f) =>
-          f.originalName.toLowerCase().includes(q) ||
-          (f.category && f.category.toLowerCase().includes(q))
-      );
-    } else {
-      const targetFolder = folderId && folderId !== 'null' && folderId !== 'root' ? folderId : null;
-      list = list.filter((f) => f.folderId === targetFolder);
+    let list: StoredItem[] = q
+      ? entries.filter(
+          (f) =>
+            f.originalName.toLowerCase().includes(q) ||
+            (f.category && f.category.toLowerCase().includes(q))
+        )
+      : entries.filter((f) => f.folderId === targetFolder);
+
+    // One pass over the workspace collects folder previews instead of a scan per folder.
+    const previews = new Map<string, StoredItem[]>();
+    if (list.some((item) => item.isFolder)) {
+      const folderIds = new Set(list.filter((item) => item.isFolder).map((item) => item.id));
+      for (const child of entries) {
+        if (child.isFolder || child.category !== 'image') continue;
+        if (!child.folderId || !folderIds.has(child.folderId)) continue;
+        const bucket = previews.get(child.folderId);
+        if (bucket) bucket.push(child);
+        else previews.set(child.folderId, [child]);
+      }
+      for (const [id, children] of previews) {
+        children.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+        previews.set(id, children.slice(0, 4));
+      }
     }
 
-    const allItems = Object.values(meta);
     list = list.map((item) => {
-      if (!item.isFolder) return item;
-      const previewImageIds = allItems
-        .filter(
-          (child) =>
-            !child.isFolder && child.folderId === item.id && child.category === 'image'
-        )
-        .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-        .slice(0, 4)
-        .map((child) => child.id);
-      return { ...item, previewImageIds };
+      const formattedSize = item.isFolder ? '--' : formatBytes(item.size);
+      if (!item.isFolder) return { ...item, formattedSize };
+      const previewImageIds = (previews.get(item.id) ?? []).map((child) => child.id);
+      return { ...item, formattedSize, previewImageIds };
     });
 
     list.sort((a, b) => {

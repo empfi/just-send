@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api';
 import type { Item } from '../../types';
 import { Icon } from '../Icon';
+import { FileTypeIcon } from '../FileTypeIcon';
 import { Sheet } from '../Sheet';
 import { PreviewSkeleton } from '../Skeletons';
 
@@ -116,6 +117,11 @@ export function PreviewSheet({ open, item, onClose }: Props) {
           )
         ) : (
           <div style={{ textAlign: 'center', padding: 32 }}>
+            <FileTypeIcon
+              name={item.originalName}
+              category={item.category}
+              className="preview-file-icon"
+            />
             <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{item.originalName}</div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
               Inline preview not available for this file type

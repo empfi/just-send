@@ -1309,28 +1309,41 @@ body.app-loading .app-main {
   color: var(--text-primary);
 }
 
+/* Toasts sit under the header so they never cover the bottom dock, batch bar
+   or upload progress. They stay passive: no taps land on them. */
 .toast-container {
   position: fixed;
-  bottom: var(--space-4);
-  left: var(--space-4);
-  z-index: 120;
+  top: calc(var(--header-height) + var(--space-2) + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  z-index: 200;
   display: flex;
-  flex-direction: column-reverse;
-  gap: var(--space-2);
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0 var(--space-3);
   pointer-events: none;
 }
 .toast {
-  pointer-events: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border-strong);
+  pointer-events: none;
+  width: fit-content;
+  max-width: min(420px, 100%);
+  background: rgba(24, 24, 26, 0.92);
+  border: 1px solid var(--border-subtle);
   color: var(--text-primary);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-control);
+  padding: 8px 14px;
+  border-radius: 999px;
   font-size: 12px;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  animation: toastDropIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes toastDropIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
 }
 .toast-success .toast-icon { color: var(--status-positive); }
 .toast-error .toast-icon { color: var(--status-negative); }
@@ -1556,14 +1569,6 @@ body.app-loading .app-main {
     height: 170px;
   }
 
-  .toast-container {
-    left: var(--space-3);
-    right: var(--space-3);
-    bottom: calc(var(--bottom-bar-height) + var(--space-2));
-  }
-  .toast {
-    max-width: 100%;
-  }
 }
 
 .sheet-grabber {
@@ -2204,4 +2209,92 @@ body.app-loading .app-main {
   display: block;
   pointer-events: none;
   background: var(--bg-deep);
+}
+
+/* File type badges */
+.file-type-icon {
+  width: 34px;
+  height: 44px;
+  display: block;
+  flex: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+.file-type-icon-sm {
+  width: 16px;
+  height: 21px;
+  filter: none;
+}
+.thumb-icon-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.thumb-icon-placeholder .file-type-icon {
+  width: 40px;
+  height: 52px;
+}
+.preview-file-icon {
+  width: 56px;
+  height: 73px;
+  margin: 0 auto 12px;
+}
+
+/* Kept out of the flow but not display:none, which breaks the picker on iOS. */
+.file-input-hidden {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Long folders: skip layout and paint for cards that are off screen. */
+.file-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 300px;
+}
+
+@media (max-width: 640px) {
+  .file-card {
+    contain-intrinsic-size: auto 88px;
+  }
+  .file-type-icon-sm {
+    width: 18px;
+    height: 24px;
+  }
+  .thumb-icon-placeholder .file-type-icon {
+    width: 34px;
+    height: 44px;
+  }
+
+  /* The bottom dock already has an upload button; the floating one only covered it. */
+  .upload-fab {
+    display: none;
+  }
+
+  .toast-container {
+    padding: 0 10px;
+    gap: 5px;
+  }
+  .toast {
+    width: 100%;
+    justify-content: center;
+    border-radius: 12px;
+    padding: 9px 12px;
+  }
+
+  /* Stay above the dock, but under the selection bar so bulk actions stay tappable. */
+  .upload-dock {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: none;
+    bottom: calc(var(--bottom-bar-height) + env(safe-area-inset-bottom) + var(--space-2));
+    z-index: 54;
+  }
 }

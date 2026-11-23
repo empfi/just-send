@@ -77,7 +77,7 @@ router.post('/files/upload', requireSession, upload.array('files', 100), (req, r
 
     const auth = authed(req);
     const folderId = (req.body?.folderId as string | undefined) || null;
-    const uploaded = files.map((f) => fileService.addFile(auth.workspace.id, f, folderId, auth.device.id));
+    const uploaded = fileService.addFiles(auth.workspace.id, files, folderId, auth.device.id);
 
     res.status(201).json({
       success: true,
@@ -126,7 +126,7 @@ router.get('/files/:id/download', requireSession, (req, res) => {
   }
 });
 
-router.get('/files/:id/preview', requireSession, (req, res) => {
+router.get('/files/:id/preview', requireSession, async (req, res) => {
   try {
     const auth = authed(req);
 
@@ -137,14 +137,31 @@ router.get('/files/:id/preview', requireSession, (req, res) => {
     }
 
     const filePath = file.fullPath;
-    const stat = fs.statSync(filePath);
+    let stat: fs.Stats;
+    try {
+      stat = await fs.promises.stat(filePath);
+    } catch {
+      res.status(404).json({ success: false, error: 'File not found' });
+      return;
+    }
+
     const fileSize = stat.size;
-    const range = req.headers.range;
     const contentType = file.mimeType || mime.lookup(file.originalName) || 'application/octet-stream';
+    // Previews never change in place, so browsers and grids can reuse them.
+    const etag = `W/"${fileSize.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
 
     res.setHeader('Content-Type', contentType);
     res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.setHeader('ETag', etag);
+    res.setHeader('Last-Modified', stat.mtime.toUTCString());
 
+    if (!req.headers.range && req.headers['if-none-match'] === etag) {
+      res.status(304).end();
+      return;
+    }
+
+    const range = req.headers.range;
     if (range) {
       const parts = range.replace(/bytes=/, '').split('-');
       const start = parseInt(parts[0], 10);

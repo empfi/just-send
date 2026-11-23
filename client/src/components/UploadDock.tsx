@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
+import { FileTypeIcon } from './FileTypeIcon';
+
+const COMPACT_LAYOUT = '(max-width: 640px)';
 
 export interface UploadProgress {
   fileName: string;
@@ -17,10 +20,11 @@ interface UploadDockProps {
 }
 
 export function UploadDock({ progress, onDismiss }: UploadDockProps) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() => !window.matchMedia(COMPACT_LAYOUT).matches);
 
   useEffect(() => {
-    setOpen(true);
+    // On phones the compact bar stays collapsed unless something went wrong.
+    setOpen(!window.matchMedia(COMPACT_LAYOUT).matches || progress?.status === 'error');
   }, [progress?.fileName, progress?.status]);
 
   if (!progress) return null;
@@ -63,7 +67,7 @@ export function UploadDock({ progress, onDismiss }: UploadDockProps) {
               ) : progress.previewKind === 'video' && progress.previewUrl ? (
                 <video src={progress.previewUrl} muted playsInline preload="metadata" />
               ) : (
-                <Icon name="file" className="icon" />
+                <FileTypeIcon name={progress.fileName} category="other" className="file-type-icon-sm" />
               )}
             </div>
             <div className="upload-dock-meta">

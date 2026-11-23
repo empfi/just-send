@@ -4,6 +4,7 @@ import type { Breadcrumb, Item } from '../types';
 import { api } from '../api';
 import { formatTimeAgo } from '../utils';
 import { Icon } from './Icon';
+import { FileTypeIcon } from './FileTypeIcon';
 import { Checkbox } from './Checkbox';
 import { FilesSkeleton } from './Skeletons';
 
@@ -14,7 +15,6 @@ interface FilesViewProps {
   loading: boolean;
   breadcrumbs: Breadcrumb[];
   folderId: string | null;
-  search: string;
   sort: string;
   view: ViewMode;
   selected: Set<string>;
@@ -36,17 +36,47 @@ interface FilesViewProps {
   onContextMenu: (event: ReactMouseEvent, item: Item | null) => void;
 }
 
-function categoryIcon(item: Item): string {
-  if (item.isFolder) return 'folder';
-  switch (item.category) {
-    case 'image': return 'image';
-    case 'video': return 'video';
-    case 'audio': return 'audio';
-    case 'document': return 'document';
-    case 'archive': return 'archive';
-    case 'code': return 'code';
-    default: return 'file';
-  }
+// Keeps typing local to the field so the file grid never re-renders per keystroke.
+function SearchBox({ onSearchChange }: { onSearchChange: (value: string) => void }) {
+  const [draft, setDraft] = useState('');
+  const sent = useRef('');
+
+  useEffect(() => {
+    if (draft === sent.current) return undefined;
+    const timer = window.setTimeout(() => {
+      sent.current = draft;
+      onSearchChange(draft);
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [draft, onSearchChange]);
+
+  const clear = () => {
+    sent.current = '';
+    setDraft('');
+    onSearchChange('');
+  };
+
+  return (
+    <div className="search-box">
+      <Icon name="search" className="icon icon-sm search-icon" />
+      <input
+        type="text"
+        id="searchInput"
+        className="search-input"
+        placeholder="Search files"
+        value={draft}
+        autoComplete="off"
+        enterKeyHint="search"
+        onChange={(event) => setDraft(event.target.value)}
+      />
+      <kbd className="search-keycap">/</kbd>
+      {draft ? (
+        <button className="search-clear visible" onClick={clear} aria-label="Clear search">
+          <Icon name="x" className="icon icon-sm" />
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 export function FilesView(props: FilesViewProps) {
@@ -55,7 +85,6 @@ export function FilesView(props: FilesViewProps) {
     loading,
     breadcrumbs,
     folderId,
-    search,
     sort,
     view,
     selected,
@@ -142,12 +171,14 @@ export function FilesView(props: FilesViewProps) {
             alt=""
             aria-hidden="true"
             loading="lazy"
+            decoding="async"
           />
           <img
             src={api.previewUrl(folderImages[0])}
             className="thumb-single-image"
             alt={item.originalName}
             loading="lazy"
+            decoding="async"
           />
         </div>
       );
@@ -157,7 +188,7 @@ export function FilesView(props: FilesViewProps) {
       return (
         <div className="thumb-collage" data-count={folderImages.length}>
           {folderImages.map((id) => (
-            <img key={id} src={api.previewUrl(id)} className="thumb-img" alt="" loading="lazy" />
+            <img key={id} src={api.previewUrl(id)} className="thumb-img" alt="" loading="lazy" decoding="async" />
           ))}
         </div>
       );
@@ -178,17 +209,23 @@ export function FilesView(props: FilesViewProps) {
 
     if (!item.isFolder && item.category === 'image') {
       return (
-        <img src={api.previewUrl(item.id)} className="thumb-img" alt={item.originalName} loading="lazy" />
+        <img
+          src={api.previewUrl(item.id)}
+          className="thumb-img"
+          alt={item.originalName}
+          loading="lazy"
+          decoding="async"
+        />
       );
     }
 
     return (
       <div className="thumb-icon-placeholder">
-        <Icon
-          name={categoryIcon(item)}
-          className="icon icon-lg"
-          style={item.isFolder ? { color: 'var(--text-primary)' } : undefined}
-        />
+        {item.isFolder ? (
+          <Icon name="folder" className="icon icon-lg" style={{ color: 'var(--text-primary)' }} />
+        ) : (
+          <FileTypeIcon name={item.originalName} category={item.category} />
+        )}
       </div>
     );
   };
@@ -233,23 +270,7 @@ export function FilesView(props: FilesViewProps) {
 
       <section className="toolbar">
         <div className="toolbar-top">
-          <div className="search-box">
-            <Icon name="search" className="icon icon-sm search-icon" />
-            <input
-              type="text"
-              id="searchInput"
-              className="search-input"
-              placeholder="Search files"
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-            <kbd className="search-keycap">/</kbd>
-            {search ? (
-              <button className="search-clear visible" onClick={() => onSearchChange('')}>
-                <Icon name="x" className="icon icon-sm" />
-              </button>
-            ) : null}
-          </div>
+          <SearchBox onSearchChange={onSearchChange} />
 
           <div className="view-controls">
             <div className="new-menu-wrap" ref={newMenuRef}>
@@ -471,11 +492,15 @@ export function FilesView(props: FilesViewProps) {
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Icon
-                          name={categoryIcon(item)}
-                          className="icon icon-sm"
-                          style={{ color: isFolder ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                        />
+                        {isFolder ? (
+                          <Icon name="folder" className="icon icon-sm" style={{ color: 'var(--text-primary)' }} />
+                        ) : (
+                          <FileTypeIcon
+                            name={item.originalName}
+                            category={item.category}
+                            className="file-type-icon-sm"
+                          />
+                        )}
                         <span onClick={() => openItem(item)} style={{ cursor: 'pointer' }}>
                           {item.originalName}
                         </span>

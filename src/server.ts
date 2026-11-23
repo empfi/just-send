@@ -25,8 +25,21 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(requestLogger);
 
 const clientIndex = path.join(CLIENT_DIR, 'index.html');
-if (fs.existsSync(CLIENT_DIR)) {
-  app.use(express.static(CLIENT_DIR));
+const hasClient = fs.existsSync(CLIENT_DIR);
+if (hasClient) {
+  app.use(
+    express.static(CLIENT_DIR, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        // Vite emits hashed asset names, so those can be cached hard. HTML must not be.
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else {
+          res.setHeader('Cache-Control', 'no-cache');
+        }
+      },
+    })
+  );
 }
 
 app.get('/api/events', requireSession, (req, res) => {
@@ -52,7 +65,7 @@ app.use('/api/workspaces', workspaceRoutes);
 
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api')) {
-    if (fs.existsSync(clientIndex)) {
+    if (hasClient) {
       return res.sendFile(clientIndex);
     }
     return res
