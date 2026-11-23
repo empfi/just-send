@@ -382,6 +382,7 @@ export function FilesView(props: FilesViewProps) {
         </div>
       </section>
 
+      <div className="files-content" key={`${folderId ?? 'root'}-${view}`}>
       {loading ? (
         <FilesSkeleton view={view} />
       ) : items.length === 0 ? (
@@ -396,7 +397,7 @@ export function FilesView(props: FilesViewProps) {
         </div>
       ) : view === 'grid' ? (
         <section className="files-grid" onContextMenu={(event) => onContextMenu(event, null)}>
-          {items.map((item) => {
+          {items.map((item, index) => {
             const isSelected = selected.has(item.id);
             const isFolder = item.isFolder;
             return (
@@ -405,6 +406,7 @@ export function FilesView(props: FilesViewProps) {
                 className={`file-card ${isSelected ? 'selected' : ''} ${isFolder ? 'folder-card' : ''} ${
                   dropTarget === item.id ? 'drag-target-over' : ''
                 }`}
+                style={{ animationDelay: `${Math.min(index, 12) * 24}ms` }}
                 data-id={item.id}
                 draggable={canManage}
                 onDragStart={(event) => startDrag(event, item)}
@@ -507,7 +509,7 @@ export function FilesView(props: FilesViewProps) {
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => {
+              {items.map((item, index) => {
                 const isSelected = selected.has(item.id);
                 const isFolder = item.isFolder;
                 return (
@@ -516,6 +518,7 @@ export function FilesView(props: FilesViewProps) {
                     className={`${isSelected ? 'selected' : ''} ${isFolder ? 'folder-row' : ''} ${
                       dropTarget === item.id ? 'drag-target-over' : ''
                     }`}
+                    style={{ animationDelay: `${Math.min(index, 14) * 16}ms` }}
                     draggable={canManage}
                     onDragStart={(event) => startDrag(event, item)}
                     onDragEnd={() => {
@@ -594,6 +597,7 @@ export function FilesView(props: FilesViewProps) {
           </table>
         </section>
       )}
+      </div>
 
       {selected.size > 0 ? (
         <div className="batch-bar active" role="region" aria-label="Bulk actions">

@@ -13,7 +13,7 @@ interface Props {
   onClose: () => void;
 }
 
-const UNMOUNT_DELAY = 200;
+const UNMOUNT_DELAY = 280;
 
 // Averages the photo down to one colour so the preview backdrop can take it on.
 function readTint(img: HTMLImageElement): string | null {
@@ -50,6 +50,7 @@ export function PreviewSheet({ open, item, onClose }: Props) {
   const [text, setText] = useState('');
   const [loadingText, setLoadingText] = useState(false);
   const [imageReady, setImageReady] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const [tint, setTint] = useState<string | null>(null);
   const [mounted, setMounted] = useState(open);
 
@@ -61,6 +62,7 @@ export function PreviewSheet({ open, item, onClose }: Props) {
 
   useEffect(() => {
     setImageReady(false);
+    setImageError(false);
     setTint(null);
     setText('');
     if (!open || !item || !isText) {
@@ -114,6 +116,8 @@ export function PreviewSheet({ open, item, onClose }: Props) {
   if (!mounted || !item) return null;
 
   const previewUrl = api.previewUrl(item.id);
+  // The versioned image URL skips previews cached at the old 2400 px cap.
+  const imagePreviewUrl = `${previewUrl}?v=2`;
   const isPdf = item.mimeType === 'application/pdf';
   const name = displayName(item.originalName);
 
@@ -134,19 +138,61 @@ export function PreviewSheet({ open, item, onClose }: Props) {
 
       <div className="preview-canvas">
         {item.category === 'image' ? (
-          <div className="preview-image-wrap">
+          <div
+            className={`preview-image-wrap ${imageError ? 'is-error' : imageReady ? 'is-ready' : 'is-loading'}`}
+            aria-busy={!imageReady}
+          >
             <img
-              key={item.id}
-              src={previewUrl}
-              className="preview-image"
-              alt={item.originalName}
+              src={api.thumbUrl(item.id)}
+              className="preview-image preview-image-placeholder"
+              alt=""
+              aria-hidden="true"
+              decoding="async"
               onLoad={(event) => {
-                setImageReady(true);
-                setTint(readTint(event.currentTarget));
+                // The grid already loaded this thumb, so it gives the room its
+                // colour while the full render is still on the server.
+                const nextTint = readTint(event.currentTarget);
+                if (nextTint) setTint((current) => current ?? nextTint);
               }}
-              onError={() => setImageReady(true)}
             />
-            {!imageReady ? <div className="skeleton preview-image-skeleton" /> : null}
+            {!imageError ? (
+              <img
+                key={item.id}
+                src={imagePreviewUrl}
+                className={`preview-image preview-image-full ${imageReady ? 'is-ready' : ''}`}
+                alt={item.originalName}
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
+                onLoad={(event) => {
+                  setImageReady(true);
+                  setTint(readTint(event.currentTarget));
+                }}
+                onError={() => {
+                  setImageError(true);
+                  setImageReady(true);
+                }}
+              />
+            ) : null}
+            {!imageReady ? (
+              <div className="preview-image-loading" role="status">
+                <span className="preview-spinner" aria-hidden="true" />
+                <span>Loading image</span>
+              </div>
+            ) : null}
+            {imageError ? (
+              <div className="preview-image-error" role="status">
+                <FileTypeIcon
+                  name={item.originalName}
+                  category={item.category}
+                  className="preview-file-icon"
+                />
+                <div className="preview-image-error-title">Preview unavailable</div>
+                <div className="preview-image-error-hint">
+                  Use the download button below to open the full file.
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : item.category === 'video' ? (
           <video controls autoPlay playsInline className="preview-video">

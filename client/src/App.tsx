@@ -20,6 +20,7 @@ import { MobileDock } from './components/MobileDock';
 import { FilesView, type ViewMode } from './components/FilesView';
 import { ClipsView } from './components/ClipsView';
 import { UploadDock, type UploadItem, type UploadQueue } from './components/UploadDock';
+import { ToastItem } from './components/Toast';
 import { CreateWorkspaceSheet } from './components/modals/CreateWorkspaceSheet';
 import { KeyphraseSheet } from './components/modals/KeyphraseSheet';
 import { RecoverSheet } from './components/modals/RecoverSheet';
@@ -34,6 +35,7 @@ interface Toast {
   id: number;
   message: string;
   kind: ToastKind;
+  leaving?: boolean;
 }
 
 interface ContextState {
@@ -165,7 +167,11 @@ export default function App() {
     // Never stack more than three, so phones keep a single readable strip.
     setToasts((current) => [...current.slice(-2), { id, message, kind }]);
     window.setTimeout(
-      () => setToasts((current) => current.filter((t) => t.id !== id)),
+      () => {
+        // Let the toast animate out before it leaves the strip.
+        setToasts((current) => current.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
+        window.setTimeout(() => setToasts((current) => current.filter((t) => t.id !== id)), 200);
+      },
       kind === 'error' ? 4200 : 2600
     );
   }, []);
@@ -1220,13 +1226,7 @@ export default function App() {
 
       <div className="toast-container" role="status" aria-live="polite">
         {toasts.map((toast) => (
-          <div key={toast.id} className={`toast toast-${toast.kind}`}>
-            <Icon
-              name={toast.kind === 'error' ? 'x' : toast.kind === 'info' ? 'link' : 'check'}
-              className="icon icon-sm toast-icon"
-            />
-            <span>{toast.message}</span>
-          </div>
+          <ToastItem key={toast.id} toast={toast} />
         ))}
       </div>
     </>

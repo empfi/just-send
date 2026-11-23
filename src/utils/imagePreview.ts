@@ -5,7 +5,9 @@ import { heicPreviewPath, isHeic } from './heicPreview';
 import { IMAGE_CACHE_DIR, cachePrefix } from './previewCache';
 
 export const THUMB_MAX_EDGE = 480;
-export const PREVIEW_MAX_EDGE = 2400;
+// The preview is capped at 1400 CSS px, so 2000 keeps ample detail without
+// making every first open wait on a 12 MP decode and a multi-megabyte transfer.
+export const PREVIEW_MAX_EDGE = 2000;
 
 // Animated GIFs and SVGs lose too much from a static re-encode, so they keep
 // streaming as-is. Everything else becomes a WebP sized for its job.
@@ -17,13 +19,18 @@ const MAX_CONCURRENT_RENDERS = 2;
 let activeRenders = 0;
 const renderWaiters: Array<() => void> = [];
 
-async function acquireRenderSlot(): Promise<void> {
+async function acquireRenderSlot(priority: boolean): Promise<void> {
   if (activeRenders < MAX_CONCURRENT_RENDERS) {
     activeRenders += 1;
     return;
   }
   // release() hands the slot over directly, so this must not count it twice.
-  await new Promise<void>((resolve) => renderWaiters.push(resolve));
+  // Previews jump ahead of queued thumbnails, so opening a photo never waits
+  // behind a whole folder of card renders.
+  await new Promise<void>((resolve) => {
+    if (priority) renderWaiters.unshift(resolve);
+    else renderWaiters.push(resolve);
+  });
 }
 
 function releaseRenderSlot(): void {
@@ -36,8 +43,8 @@ function releaseRenderSlot(): void {
   activeRenders = Math.max(0, activeRenders - 1);
 }
 
-async function withRenderSlot<T>(task: () => Promise<T>): Promise<T> {
-  await acquireRenderSlot();
+async function withRenderSlot<T>(task: () => Promise<T>, priority = false): Promise<T> {
+  await acquireRenderSlot(priority);
   try {
     return await task();
   } finally {
@@ -77,7 +84,7 @@ export async function resizedImagePath(
       await sharp(filePath, { failOn: 'none', pages: 1 })
         .rotate()
         .resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: maxEdge <= THUMB_MAX_EDGE ? 74 : 82 })
+        .webp({ quality: maxEdge <= THUMB_MAX_EDGE ? 74 : 80 })
         .toFile(temp);
       await fs.promises.rename(temp, target);
     } catch (err) {
@@ -163,5 +170,5 @@ export async function imageVariant(
       contentType: 'image/webp',
       name: `${name.replace(/\.[^.]+$/, '')}.webp`,
     };
-  });
+  }, maxEdge > THUMB_MAX_EDGE);
 }

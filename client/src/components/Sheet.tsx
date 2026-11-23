@@ -24,7 +24,7 @@ interface DragState {
   delta: number;
 }
 
-const CLOSE_ANIMATION_MS = 240;
+const CLOSE_ANIMATION_MS = 300;
 
 export function Sheet({
   open,

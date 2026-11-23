@@ -17,12 +17,19 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-body.app-loading .app-header,
-body.app-loading .app-main {
-  opacity: 0;
+.app-header {
+  animation: headerIn 420ms var(--ease-standard) backwards;
 }
-.app-header, .app-main {
-  transition: opacity 120ms ease;
+.app-main {
+  animation: mainIn 420ms var(--ease-standard) 40ms backwards;
+}
+@keyframes headerIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mainIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .tabular {
@@ -198,7 +205,8 @@ body.app-loading .app-main {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
   z-index: 100;
   padding: 4px;
-  animation: cardFadeIn 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top left;
+  animation: menuIn 160ms var(--ease-standard) backwards;
 }
 .dropdown-header {
   font-size: 11px;
@@ -480,6 +488,21 @@ body.app-loading .app-main {
   margin: 0 auto;
   padding: var(--space-6) var(--space-6) 96px var(--space-6);
 }
+.files-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  animation: contentIn 200ms var(--ease-standard) backwards;
+}
+@keyframes viewIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes contentIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 .fullscreen-drag-overlay {
   display: none;
@@ -508,6 +531,7 @@ body.app-loading .app-main {
   flex-direction: column;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
+  animation: toolbarIn 320ms var(--ease-standard) 60ms backwards;
 }
 .toolbar-top {
   display: flex;
@@ -662,11 +686,11 @@ body.app-loading .app-main {
 }
 .batch-bar.active {
   display: flex;
-  animation: batchBarIn 180ms var(--ease-standard);
+  animation: batchBarIn 220ms var(--ease-standard) backwards;
 }
 @keyframes batchBarIn {
-  from { opacity: 0; transform: translate(-50%, 14px); }
-  to { opacity: 1; transform: translate(-50%, 0); }
+  from { opacity: 0; transform: translate(-50%, 12px) scale(0.98); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }
 .batch-bar { transform: translateX(-50%); }
 .batch-info {
@@ -723,7 +747,7 @@ body.app-loading .app-main {
   flex-direction: column;
   gap: var(--space-2);
   position: relative;
-  animation: cardFadeIn 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cardIn 260ms var(--ease-standard) backwards;
   user-select: none;
 }
 .file-card.selected {
@@ -744,15 +768,46 @@ body.app-loading .app-main {
   border-top: 1px solid var(--text-primary);
 }
 
-@keyframes cardFadeIn {
+@keyframes cardIn {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+@keyframes rowIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toolbarIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dockIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes fabIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes dockUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.file-card.skeleton-card,
+.clip-card.skeleton-card {
+  animation: none;
+}
+.files-list-table tbody tr {
+  animation: rowIn 200ms var(--ease-standard) backwards;
 }
 
 .card-top {
@@ -993,6 +1048,7 @@ body.app-loading .app-main {
   display: flex;
   flex-direction: column;
   min-height: calc(100dvh - 172px);
+  animation: viewIn 220ms var(--ease-standard) backwards;
 }
 
 .empty-state {
@@ -1069,6 +1125,7 @@ body.app-loading .app-main {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  animation: cardIn 260ms var(--ease-standard) backwards;
 }
 .clip-card:hover {
   border-color: var(--border-subtle);
@@ -1108,8 +1165,8 @@ body.app-loading .app-main {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-              visibility 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 220ms var(--ease-standard),
+              visibility 220ms var(--ease-standard);
 }
 .modal-backdrop.active {
   opacity: 1;
@@ -1126,8 +1183,8 @@ body.app-loading .app-main {
   display: flex;
   flex-direction: column;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
-  transform: scale(0.96) translateY(6px);
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform: scale(0.97) translateY(8px);
+  transition: transform 260ms var(--ease-standard);
 }
 .modal-backdrop.active .modal-window {
   transform: scale(1) translateY(0);
@@ -1173,6 +1230,7 @@ body.app-loading .app-main {
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
   opacity: 0;
   transform: scale(0.96);
+  transform-origin: top left;
   transition: opacity 120ms ease, transform 120ms ease;
   pointer-events: none;
   user-select: none;
@@ -1181,6 +1239,7 @@ body.app-loading .app-main {
   opacity: 1;
   transform: scale(1);
   pointer-events: auto;
+  animation: menuIn 130ms var(--ease-standard) backwards;
 }
 .context-menu-header {
   padding: 6px 10px;
@@ -1293,8 +1352,8 @@ body.app-loading .app-main {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-              visibility 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 220ms var(--ease-standard),
+              visibility 220ms var(--ease-standard);
 }
 /* Colour pulled from the open image, spread wide and blurred so the room takes
    on the photo instead of sitting behind a flat grey sheet. */
@@ -1329,7 +1388,7 @@ body.app-loading .app-main {
   height: 100%;
   pointer-events: none;
   transform: scale(0.985);
-  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 280ms var(--ease-standard);
 }
 .preview-overlay.active .preview-canvas {
   transform: scale(1);
@@ -1338,23 +1397,107 @@ body.app-loading .app-main {
   pointer-events: auto;
 }
 .preview-overlay .preview-image-wrap {
-  width: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(92vw, 1400px);
+  height: min(calc(100vh - 180px), 860px);
+  height: min(calc(100dvh - 180px), 860px);
   max-width: 100%;
   max-height: 100%;
-  min-height: 0;
+  border-radius: 10px;
+}
+.preview-overlay .preview-image-wrap.is-loading,
+.preview-overlay .preview-image-wrap.is-error {
+  overflow: hidden;
+  border: 1px solid var(--border-hairline);
+  background: rgba(255, 255, 255, 0.025);
 }
 .preview-overlay .preview-image {
   display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+}
+.preview-overlay .preview-image-placeholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: cover;
+  filter: blur(26px) saturate(1.08);
+  transform: scale(1.08);
+  opacity: 0.58;
+  transition: opacity 240ms var(--ease-standard);
+}
+.preview-overlay .preview-image-wrap.is-ready .preview-image-placeholder {
+  opacity: 0;
+}
+.preview-overlay .preview-image-full {
+  position: relative;
+  z-index: 1;
   width: auto;
   height: auto;
-  max-width: min(92vw, 1400px);
-  max-height: calc(100vh - 180px);
-  border-radius: 10px;
+  opacity: 0;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  transition: opacity 240ms var(--ease-standard);
 }
-.preview-overlay .preview-image-skeleton {
+.preview-overlay .preview-image-full.is-ready {
+  opacity: 1;
+}
+.preview-image-loading {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-hairline);
+  border-radius: 999px;
+  background: rgba(20, 20, 22, 0.78);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color: var(--text-secondary);
+  font-size: 12px;
+  backdrop-filter: blur(14px);
+}
+.preview-spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--text-primary);
+  border-radius: 50%;
+  animation: previewSpin 700ms linear infinite;
+}
+@keyframes previewSpin {
+  to { transform: rotate(360deg); }
+}
+.preview-image-error {
+  position: absolute;
   inset: 0;
-  border-radius: 10px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: var(--space-4);
+  text-align: center;
+  background: rgba(15, 15, 16, 0.76);
+}
+.preview-image-error-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.preview-image-error-hint {
+  max-width: 260px;
+  font-size: 11px;
+  color: var(--text-muted);
 }
 .preview-overlay .preview-video {
   width: auto;
@@ -1533,10 +1676,15 @@ body.app-loading .app-main {
     backdrop-filter: blur(40px) saturate(1.2);
     -webkit-backdrop-filter: blur(40px) saturate(1.2);
   }
+  .preview-overlay .preview-image-wrap {
+    width: 100%;
+    height: calc(100vh - 170px);
+    height: calc(100dvh - 170px);
+    border-radius: 0;
+  }
   .preview-overlay .preview-image {
-    max-width: 100vw;
-    max-height: calc(100vh - 170px);
-    max-height: calc(100dvh - 170px);
+    max-width: 100%;
+    max-height: 100%;
     border-radius: 0;
     box-shadow: none;
   }
@@ -1610,11 +1758,9 @@ body.app-loading .app-main {
   gap: var(--space-2);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(16px);
-  animation: toastDropIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
-@keyframes toastDropIn {
-  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
-  to { opacity: 1; transform: none; }
+.toast.is-leaving {
+  pointer-events: none;
 }
 .toast-success .toast-icon { color: var(--status-positive); }
 .toast-error .toast-icon { color: var(--status-negative); }
@@ -1763,6 +1909,7 @@ body.app-loading .app-main {
     justify-content: space-around;
     z-index: 50;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    animation: dockUp 300ms var(--ease-standard) 60ms backwards;
   }
 
   .mobile-nav-btn {
@@ -1823,7 +1970,7 @@ body.app-loading .app-main {
     border-bottom: none;
     max-height: 85vh;
     transform: translateY(100%);
-    transition: transform 240ms cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 280ms var(--ease-standard);
   }
   .modal-backdrop.active .modal-window {
     transform: translateY(0);
@@ -1903,7 +2050,8 @@ body.app-loading .app-main {
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
   padding: 4px;
   z-index: 60;
-  animation: cardFadeIn 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top left;
+  animation: menuIn 160ms var(--ease-standard) backwards;
 }
 .new-menu-item {
   display: flex;
@@ -2004,19 +2152,7 @@ body.app-loading .app-main {
   gap: 10px;
   padding: var(--space-2) 0;
 }
-.preview-image-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 220px;
-}
-.preview-image-skeleton {
-  position: absolute;
-  inset: 0;
-  border-radius: 0;
-}
+
 
 @media (max-width: 640px) {
   .search-keycap { display: none; }
@@ -2134,6 +2270,7 @@ body.app-loading .app-main {
   z-index: 55;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.35);
   transition: transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
+  animation: fabIn 280ms var(--ease-standard) 80ms backwards;
 }
 .upload-fab:hover,
 .clip-fab:hover {
@@ -2162,7 +2299,7 @@ body.app-loading .app-main {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   z-index: 60;
   overflow: hidden;
-  animation: cardFadeIn 180ms var(--ease-standard);
+  animation: dockIn 240ms var(--ease-standard) backwards;
 }
 .upload-dock-bar {
   display: flex;
@@ -2238,9 +2375,11 @@ body.app-loading .app-main {
   background: var(--bg-raised);
 }
 .upload-dock-fill {
+  width: 100%;
   height: 100%;
   background: var(--text-primary);
-  transition: width 120ms linear, background-color var(--dur-fast);
+  transform-origin: left center;
+  transition: transform 180ms var(--ease-standard), background-color var(--dur-fast);
 }
 .upload-dock.is-done .upload-dock-fill {
   background: var(--status-positive);
@@ -2294,9 +2433,11 @@ body.app-loading .app-main {
   overflow: hidden;
 }
 .upload-dock-row-fill {
+  width: 100%;
   height: 100%;
   background: var(--text-secondary);
-  transition: width 120ms linear;
+  transform-origin: left center;
+  transition: transform 180ms var(--ease-standard);
 }
 .upload-dock-row.is-done .upload-dock-row-fill {
   background: var(--status-positive);
@@ -2310,6 +2451,45 @@ body.app-loading .app-main {
   height: 28px;
   padding: 0 10px;
   font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-header,
+  .app-main,
+  #filesView,
+  .clips-view.active,
+  .files-content,
+  .toolbar,
+  .file-card:not(.skeleton-card),
+  .clip-card:not(.skeleton-card),
+  .files-list-table tbody tr,
+  .upload-dock,
+  .mobile-bottom-dock,
+  .upload-fab,
+  .clip-fab,
+  .workspace-dropdown-menu,
+  .new-menu,
+  .context-menu.visible,
+  .batch-bar.active {
+    animation: none !important;
+  }
+  .modal-backdrop,
+  .preview-overlay {
+    transition-duration: 120ms;
+  }
+  .modal-window,
+  .preview-canvas {
+    transform: none !important;
+    transition: none !important;
+  }
+  .preview-spinner {
+    animation: none;
+    border-top-color: var(--text-muted);
+  }
+  .preview-image-full,
+  .preview-image-placeholder {
+    transition: none;
+  }
 }
 
 @media (max-width: 640px) {

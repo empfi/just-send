@@ -100,7 +100,10 @@ export function UploadDock({ queue, onCancel, onRetry, onDismiss }: UploadDockPr
       {open ? (
         <div className="upload-dock-body">
           <div className="upload-dock-track">
-            <div className="upload-dock-fill" style={{ width: `${finished ? 100 : queue.percent}%` }} />
+            <div
+              className="upload-dock-fill"
+              style={{ transform: `scaleX(${(finished ? 100 : queue.percent) / 100})` }}
+            />
           </div>
 
           <div className="upload-dock-list">
@@ -121,7 +124,7 @@ export function UploadDock({ queue, onCancel, onRetry, onDismiss }: UploadDockPr
                   <div
                     className="upload-dock-row-fill"
                     style={{
-                      width: `${item.status === 'done' ? 100 : item.percent}%`,
+                      transform: `scaleX(${(item.status === 'done' ? 100 : item.percent) / 100})`,
                       opacity: item.status === 'error' ? 0 : 1,
                     }}
                   />

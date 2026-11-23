@@ -58,8 +58,12 @@ export function ClipsView({
             <span>Snippets</span>
           </div>
           <div className="clips-grid">
-            {clips.map((clip) => (
-              <div className="clip-card" key={clip.id}>
+            {clips.map((clip, index) => (
+              <div
+                className="clip-card"
+                key={clip.id}
+                style={{ animationDelay: `${Math.min(index, 12) * 24}ms` }}
+              >
                 <div className="clip-content">{clip.content}</div>
                 <div className="clip-footer">
                   <span>
