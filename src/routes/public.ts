@@ -2,7 +2,7 @@ import express from 'express';
 import mime from 'mime-types';
 import shareService, { type ShareRecord } from '../services/shareService';
 import fileService from '../services/fileService';
-import { authLimiter } from '../middleware/rateLimiter';
+import { authLimiter, shareDownloadLimiter, shareReadLimiter } from '../middleware/rateLimiter';
 import { streamStoredFile } from '../utils/fileStream';
 import { formatBytes } from '../utils/formatters';
 
@@ -77,7 +77,7 @@ function loadShare(req: express.Request, res: express.Response): ShareRecord | n
   return share;
 }
 
-router.get('/shares/:token', (req, res) => {
+router.get('/shares/:token', shareReadLimiter, (req, res) => {
   const share = loadShare(req, res);
   if (!share) return;
   res.setHeader('Cache-Control', 'no-store');
@@ -111,7 +111,7 @@ router.post('/shares/:token/unlock', authLimiter, (req, res) => {
   res.json({ success: true, data: publicPayload(share) });
 });
 
-router.get('/shares/:token/files/:itemId/preview', async (req, res) => {
+router.get('/shares/:token/files/:itemId/preview', shareReadLimiter, async (req, res) => {
   const share = loadShare(req, res);
   if (!share) return;
 
@@ -132,7 +132,7 @@ router.get('/shares/:token/files/:itemId/preview', async (req, res) => {
   });
 });
 
-router.get('/shares/:token/files/:itemId/download', async (req, res) => {
+router.get('/shares/:token/files/:itemId/download', shareDownloadLimiter, async (req, res) => {
   const share = loadShare(req, res);
   if (!share) return;
   if (!share.allowDownload) {
@@ -161,7 +161,7 @@ router.get('/shares/:token/files/:itemId/download', async (req, res) => {
   });
 });
 
-router.get('/shares/:token/download', (req, res) => {
+router.get('/shares/:token/download', shareDownloadLimiter, (req, res) => {
   const share = loadShare(req, res);
   if (!share) return;
   if (!share.allowDownload) {

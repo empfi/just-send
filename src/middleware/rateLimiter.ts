@@ -64,3 +64,22 @@ export const strictLimiter = createRateLimiter({
   max: 6,
   message: 'Too many verification attempts',
 });
+
+// Public share links are unauthenticated, so every endpoint gets a ceiling.
+export const shareReadLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: 'Too many requests for this link',
+});
+
+export const shareDownloadLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: 'Too many downloads from this link',
+});
+
+export const shareCreateLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: 'Too many share links created',
+});

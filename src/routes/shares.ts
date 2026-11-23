@@ -3,6 +3,7 @@ import shareService, { MAX_SHARE_HOURS } from '../services/shareService';
 import fileService from '../services/fileService';
 import auditService from '../services/auditService';
 import { requireSession, authed } from '../middleware/auth';
+import { shareCreateLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ function parseHours(value: unknown): number | null {
   return Math.min(MAX_SHARE_HOURS, Math.round(hours));
 }
 
-router.post('/', requireSession, (req, res) => {
+router.post('/', requireSession, shareCreateLimiter, (req, res) => {
   try {
     const auth = authed(req);
     const body = req.body as {

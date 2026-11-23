@@ -2,11 +2,20 @@
 
 A fast, private file server for your local network. Move files and text between your computer and phone over Wi-Fi, with no cloud account or external service.
 
+## Screenshots
+
+Desktop and phone views of a sample "Studio Drop" workspace.
+
+| Desktop | Phone |
+| --- | --- |
+| <img src="docs/screenshots/desktop.png" alt="File grid on desktop with images, PDFs and a folder" width="640" /> | <img src="docs/screenshots/mobile.png" alt="File list on a phone with the bottom navigation dock" width="260" /> |
+
 ## Features
 
 - QR code and 6-digit code pairing
 - Master and connector device roles
 - Drag-and-drop uploads, folders, previews, and ZIP downloads
+- Public share links for selected files with a 7 day maximum, optional password, download limit, and view-only mode
 - Shared text drop for links, snippets, and codes
 - Live updates across connected devices
 - Workspace recovery with a 12-word phrase

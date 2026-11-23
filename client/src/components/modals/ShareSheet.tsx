@@ -104,6 +104,7 @@ export function ShareSheet({ open, itemIds, notify, onClose }: Props) {
   };
 
   const revoke = async (id: string) => {
+    if (!window.confirm('Revoke this link? Anyone using it loses access immediately.')) return;
     setRevoking(id);
     try {
       const res = await api.revokeShare(id);
