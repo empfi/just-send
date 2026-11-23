@@ -2248,47 +2248,68 @@ body.app-loading .app-main {
 .upload-dock.is-error .upload-dock-fill {
   background: var(--status-negative);
 }
-.upload-dock-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-}
-.upload-dock-preview {
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: var(--bg-deep);
-  border: 1px solid var(--border-hairline);
-  border-radius: 8px;
-}
-.upload-dock-preview img,
-.upload-dock-preview video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.upload-dock-meta {
+.upload-dock-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  gap: 8px;
+  max-height: 184px;
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-2);
 }
-.upload-dock-name {
-  font-size: 12px;
-  color: var(--text-primary);
-  white-space: nowrap;
+.upload-dock-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px 8px;
+  font-size: 11px;
+}
+.upload-dock-row-name {
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.upload-dock-sub {
-  font-size: 11px;
+.upload-dock-row-state {
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.upload-dock-row.is-done .upload-dock-row-state {
+  color: var(--status-positive);
+}
+.upload-dock-row.is-error .upload-dock-row-state {
+  color: var(--status-negative);
+}
+.upload-dock-row-error {
+  grid-column: 1 / -1;
+  color: var(--status-negative);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upload-dock-row-track {
+  grid-column: 1 / -1;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--bg-raised);
+  overflow: hidden;
+}
+.upload-dock-row-fill {
+  height: 100%;
+  background: var(--text-secondary);
+  transition: width 120ms linear;
+}
+.upload-dock-row.is-done .upload-dock-row-fill {
+  background: var(--status-positive);
+}
+.upload-dock-actions {
+  display: flex;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+.upload-dock-actions .btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11px;
 }
 
 @media (max-width: 640px) {
@@ -2380,6 +2401,13 @@ body.app-loading .app-main {
 .device-revoke {
   flex: none;
   color: var(--status-negative);
+}
+.device-access-select {
+  flex: none;
+  height: 28px;
+  max-width: 116px;
+  padding: 0 22px 0 8px;
+  font-size: 11px;
 }
 .panel-empty {
   margin-top: var(--space-4);

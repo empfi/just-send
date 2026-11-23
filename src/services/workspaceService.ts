@@ -4,11 +4,14 @@ import crypto from 'crypto';
 import { DATA_DIR } from '../config';
 import { generateKeyphrase, generateWorkspaceKeyPair, generateRotatingCode, verifyRotatingCode } from '../utils/crypto';
 import { hashToken, isValidPublicKey, tokenMatchesHash, verifySignature } from '../utils/deviceCrypto';
+import { deviceAccess } from '../utils/deviceAccess';
+import { clearPreviewCache } from '../utils/previewCache';
 import sseService from './sseService';
 import type {
   AuthResult,
   AuthorizationResult,
   CreateWorkspaceResult,
+  DeviceAccess,
   DeviceInfo,
   DevicePublicKey,
   DeviceRecord,
@@ -469,6 +472,8 @@ class WorkspaceService {
       console.error(`Error deleting workspace data for ${workspaceId}:`, err);
     }
 
+    // Every cached thumbnail, preview, and HEIC conversion for this workspace.
+    void clearPreviewCache(workspaceId);
     sseService.broadcast('workspace:deleted', { id: workspace.id, name: workspace.name });
     return true;
   }
@@ -482,7 +487,33 @@ class WorkspaceService {
     device.revokedAt = new Date().toISOString();
     delete device.tokenHash;
     this.saveWorkspaces();
-    return { id: device.id, name: device.name, isMaster: device.isMaster, authorizedAt: device.authorizedAt, lastSeenAt: device.lastSeenAt };
+    return {
+      id: device.id,
+      name: device.name,
+      isMaster: device.isMaster,
+      access: deviceAccess(device),
+      authorizedAt: device.authorizedAt,
+      lastSeenAt: device.lastSeenAt,
+    };
+  }
+
+  setDeviceAccess(workspaceId: string, deviceId: string, access: DeviceAccess): DeviceInfo | null {
+    const workspace = this.workspaces[workspaceId];
+    if (!workspace) return null;
+    const device = workspace.devices.find((candidate) => candidate.id === deviceId);
+    // Masters always keep full access, so only connectors can be limited.
+    if (!device || device.revokedAt || device.isMaster) return null;
+
+    device.access = access;
+    this.saveWorkspaces();
+    return {
+      id: device.id,
+      name: device.name,
+      isMaster: device.isMaster,
+      access: deviceAccess(device),
+      authorizedAt: device.authorizedAt,
+      lastSeenAt: device.lastSeenAt,
+    };
   }
 
   getDevices(workspaceId: string): DeviceInfo[] {
@@ -494,6 +525,7 @@ class WorkspaceService {
         id: device.id,
         name: device.name,
         isMaster: device.isMaster,
+        access: deviceAccess(device),
         authorizedAt: device.authorizedAt,
         lastSeenAt: device.lastSeenAt,
       }));

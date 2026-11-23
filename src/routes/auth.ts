@@ -7,6 +7,7 @@ import { requireSession, authed, parseCookies } from '../middleware/auth';
 import { normalizeFingerprint, isValidPublicKey } from '../utils/deviceCrypto';
 import { setSessionCookie, clearSessionCookie } from '../utils/sessionCookie';
 import { SESSION_COOKIE } from '../services/sessionService';
+import { deviceAccess } from '../utils/deviceAccess';
 
 const router = express.Router();
 const seenNonces = new Map<string, number>();
@@ -85,6 +86,7 @@ router.post('/session', strictLimiter, (req, res) => {
         workspace: { id: auth.workspace.id, name: auth.workspace.name },
         deviceId: auth.device.id,
         isMaster: auth.device.isMaster,
+        access: deviceAccess(auth.device),
       },
     });
   } catch (err) {
@@ -100,6 +102,7 @@ router.get('/session', requireSession, (req, res) => {
       workspace: { id: auth.workspace.id, name: auth.workspace.name },
       deviceId: auth.device.id,
       isMaster: auth.device.isMaster,
+      access: deviceAccess(auth.device),
       expiresAt: auth.session.expiresAt,
     },
   });
@@ -148,6 +151,7 @@ router.post('/devices/upgrade', strictLimiter, (req, res) => {
         workspace: { id: auth.workspace.id, name: auth.workspace.name },
         deviceId: auth.device.id,
         isMaster: auth.device.isMaster,
+        access: deviceAccess(auth.device),
       },
     });
   } catch (err) {

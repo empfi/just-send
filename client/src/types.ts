@@ -54,10 +54,13 @@ export interface PairingInfo {
   qrCode: string | null;
 }
 
+export type DeviceAccess = 'full' | 'upload' | 'view';
+
 export interface DeviceInfo {
   id: string;
   name: string;
   isMaster: boolean;
+  access: DeviceAccess;
   authorizedAt: string;
   lastSeenAt: string;
 }

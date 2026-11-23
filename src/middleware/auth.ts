@@ -37,8 +37,17 @@ export function sessionAuthFromRequest(req: Request): SessionAuth | null {
   return { ...auth, session };
 }
 
-export function requireSession(req: Request, res: Response, next: NextFunction): void {
+// Resolves the session without rejecting, so later middleware can make
+// per-device decisions before a route's own requireSession runs.
+export function attachSession(req: Request, _res: Response, next: NextFunction): void {
   const auth = sessionAuthFromRequest(req);
+  if (auth) (req as AuthedRequest).auth = auth;
+  next();
+}
+
+export function requireSession(req: Request, res: Response, next: NextFunction): void {
+  // attachSession may already have resolved this request.
+  const auth = (req as AuthedRequest).auth ?? sessionAuthFromRequest(req);
   if (!auth) {
     res.status(401).json({ success: false, error: 'Not authenticated' });
     return;

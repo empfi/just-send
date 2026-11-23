@@ -8,6 +8,7 @@ import { Sheet } from './Sheet';
 interface ClipsViewProps {
   clips: Clip[];
   loading: boolean;
+  canEdit: boolean;
   onAdd: (content: string) => Promise<boolean>;
   onDelete: (id: string) => void;
   onCopied: (ok: boolean) => void;
@@ -18,6 +19,7 @@ interface ClipsViewProps {
 export function ClipsView({
   clips,
   loading,
+  canEdit,
   onAdd,
   onDelete,
   onCopied,
@@ -72,14 +74,16 @@ export function ClipsView({
                     >
                       <Icon name="copy" className="icon icon-sm" />
                     </button>
-                    <button
-                      className="btn btn-subtle btn-icon"
-                      title="Delete snippet"
-                      style={{ height: 26, width: 26 }}
-                      onClick={() => onDelete(clip.id)}
-                    >
-                      <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
-                    </button>
+                    {canEdit ? (
+                      <button
+                        className="btn btn-subtle btn-icon"
+                        title="Delete snippet"
+                        style={{ height: 26, width: 26 }}
+                        onClick={() => onDelete(clip.id)}
+                      >
+                        <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -88,18 +92,20 @@ export function ClipsView({
         </>
       )}
 
-      <button
-        type="button"
-        className="clip-fab"
-        onClick={() => onComposerOpenChange(true)}
-        aria-label="Create snippet"
-        title="Create snippet"
-      >
-        <Icon name="send" className="icon" style={{ width: 20, height: 20 }} />
-      </button>
+      {canEdit ? (
+        <button
+          type="button"
+          className="clip-fab"
+          onClick={() => onComposerOpenChange(true)}
+          aria-label="Create snippet"
+          title="Create snippet"
+        >
+          <Icon name="send" className="icon" style={{ width: 20, height: 20 }} />
+        </button>
+      ) : null}
 
       <Sheet
-        open={composerOpen}
+        open={canEdit && composerOpen}
         onClose={() => onComposerOpenChange(false)}
         title="New snippet"
         icon="clipboard"

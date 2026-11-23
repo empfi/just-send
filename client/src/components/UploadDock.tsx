@@ -1,52 +1,95 @@
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
-import { FileTypeIcon } from './FileTypeIcon';
 
 const COMPACT_LAYOUT = '(max-width: 640px)';
 
-export interface UploadProgress {
-  fileName: string;
-  count: number;
+export type UploadItemStatus = 'pending' | 'uploading' | 'done' | 'error' | 'cancelled';
+export type UploadQueueStatus = 'uploading' | 'done' | 'error' | 'cancelled';
+
+export interface UploadItem {
+  id: string;
+  name: string;
+  size: number;
   percent: number;
-  status: 'uploading' | 'done' | 'error';
+  status: UploadItemStatus;
   error?: string;
-  previewUrl?: string;
-  previewKind?: 'image' | 'video';
+}
+
+export interface UploadQueue {
+  items: UploadItem[];
+  status: UploadQueueStatus;
+  percent: number;
 }
 
 interface UploadDockProps {
-  progress: UploadProgress | null;
+  queue: UploadQueue | null;
+  onCancel: () => void;
+  onRetry: () => void;
   onDismiss: () => void;
 }
 
-export function UploadDock({ progress, onDismiss }: UploadDockProps) {
+function itemState(item: UploadItem): string {
+  switch (item.status) {
+    case 'done':
+      return 'Done';
+    case 'error':
+      return 'Failed';
+    case 'cancelled':
+      return 'Cancelled';
+    case 'uploading':
+      return `${item.percent}%`;
+    default:
+      return 'Waiting';
+  }
+}
+
+export function UploadDock({ queue, onCancel, onRetry, onDismiss }: UploadDockProps) {
   const [open, setOpen] = useState(() => !window.matchMedia(COMPACT_LAYOUT).matches);
 
   useEffect(() => {
-    // On phones the compact bar stays collapsed unless something went wrong.
-    setOpen(!window.matchMedia(COMPACT_LAYOUT).matches || progress?.status === 'error');
-  }, [progress?.fileName, progress?.status]);
+    // On phones the compact bar stays collapsed unless something needs attention.
+    const needsAttention = queue?.status === 'error' || queue?.status === 'cancelled';
+    setOpen(!window.matchMedia(COMPACT_LAYOUT).matches || needsAttention);
+  }, [queue?.status, queue?.items.length]);
 
-  if (!progress) return null;
+  if (!queue) return null;
 
-  const done = progress.status === 'done';
-  const failed = progress.status === 'error';
-  const percent = done ? 100 : progress.percent;
-  const title = done
-    ? `Uploaded ${progress.count} file${progress.count === 1 ? '' : 's'}`
+  const total = queue.items.length;
+  const done = queue.items.filter((item) => item.status === 'done').length;
+  const retryable = queue.items.filter(
+    (item) => item.status === 'error' || item.status === 'cancelled'
+  ).length;
+  const failed = queue.status === 'error';
+  const cancelled = queue.status === 'cancelled';
+  const finished = queue.status === 'done';
+
+  const title = finished
+    ? `Uploaded ${total} file${total === 1 ? '' : 's'}`
     : failed
-      ? 'Upload failed'
-      : `Uploading ${progress.count} file${progress.count === 1 ? '' : 's'}`;
+      ? `${done} of ${total} uploaded`
+      : cancelled
+        ? 'Upload cancelled'
+        : `Uploading ${done} of ${total}`;
 
   return (
-    <section className={`upload-dock ${done ? 'is-done' : ''} ${failed ? 'is-error' : ''}`} aria-label="Upload status">
+    <section
+      className={`upload-dock ${finished ? 'is-done' : ''} ${failed || cancelled ? 'is-error' : ''}`}
+      aria-label="Upload status"
+    >
       <div className="upload-dock-bar">
-        <button type="button" className="upload-dock-toggle" onClick={() => setOpen((value) => !value)} aria-expanded={open}>
+        <button
+          type="button"
+          className="upload-dock-toggle"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+        >
           <span className="upload-dock-state">
-            <Icon name={done ? 'check' : failed ? 'x' : 'upload'} className="icon icon-sm" />
+            <Icon name={finished ? 'check' : failed || cancelled ? 'x' : 'upload'} className="icon icon-sm" />
           </span>
           <span className="upload-dock-title">{title}</span>
-          {done || failed ? null : <span className="upload-dock-percent tabular">{percent}%</span>}
+          {finished || failed || cancelled ? null : (
+            <span className="upload-dock-percent tabular">{queue.percent}%</span>
+          )}
           <Icon name="chevron-down" className={`icon icon-sm upload-dock-chevron ${open ? 'open' : ''}`} />
         </button>
         <button type="button" className="upload-dock-close" onClick={onDismiss} aria-label="Dismiss upload">
@@ -57,29 +100,54 @@ export function UploadDock({ progress, onDismiss }: UploadDockProps) {
       {open ? (
         <div className="upload-dock-body">
           <div className="upload-dock-track">
-            <div className="upload-dock-fill" style={{ width: `${percent}%` }} />
+            <div className="upload-dock-fill" style={{ width: `${finished ? 100 : queue.percent}%` }} />
           </div>
 
-          <div className="upload-dock-item">
-            <div className="upload-dock-preview">
-              {progress.previewKind === 'image' && progress.previewUrl ? (
-                <img src={progress.previewUrl} alt="" />
-              ) : progress.previewKind === 'video' && progress.previewUrl ? (
-                <video src={progress.previewUrl} muted playsInline preload="metadata" />
-              ) : (
-                <FileTypeIcon name={progress.fileName} category="other" className="file-type-icon-sm" />
-              )}
-            </div>
-            <div className="upload-dock-meta">
-              <span className="upload-dock-name" title={progress.fileName}>
-                {progress.fileName}
-              </span>
-              <span className="upload-dock-sub">
-                {progress.count > 1 ? `+${progress.count - 1} more · ` : ''}
-                {done ? 'Complete' : failed ? progress.error ?? 'Upload failed' : 'Uploading'}
-              </span>
-            </div>
+          <div className="upload-dock-list">
+            {queue.items.map((item) => (
+              <div
+                key={item.id}
+                className={`upload-dock-row ${item.status === 'error' ? 'is-error' : ''} ${
+                  item.status === 'done' ? 'is-done' : ''
+                }`}
+                title={item.error ?? item.name}
+              >
+                <span className="upload-dock-row-name">{item.name}</span>
+                <span className="upload-dock-row-state tabular">{itemState(item)}</span>
+                {item.status === 'error' && item.error ? (
+                  <span className="upload-dock-row-error">{item.error}</span>
+                ) : null}
+                <div className="upload-dock-row-track">
+                  <div
+                    className="upload-dock-row-fill"
+                    style={{
+                      width: `${item.status === 'done' ? 100 : item.percent}%`,
+                      opacity: item.status === 'error' ? 0 : 1,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
+
+          {queue.status === 'uploading' || retryable > 0 ? (
+            <div className="upload-dock-actions">
+              {queue.status === 'uploading' ? (
+                <button type="button" className="btn btn-subtle" onClick={onCancel}>
+                  Cancel
+                </button>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={onRetry}>
+                  Retry {retryable} file{retryable === 1 ? '' : 's'}
+                </button>
+              )}
+              {queue.status !== 'uploading' ? (
+                <button type="button" className="btn btn-subtle" onClick={onDismiss}>
+                  Dismiss
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </section>

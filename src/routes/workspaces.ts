@@ -10,6 +10,7 @@ import { setSessionCookie, clearSessionCookie } from '../utils/sessionCookie';
 import sseService from '../services/sseService';
 import { getRequestOrigin } from '../utils/requestOrigin';
 import { isWorkspaceDeletionAllowed, isWorkspaceLeaveAllowed } from '../services/instanceConfigService';
+import { isDeviceAccess } from '../utils/deviceAccess';
 
 const router = express.Router();
 
@@ -321,6 +322,45 @@ router.delete('/:id/devices/:deviceId', requireSession, requireMaster('revoke de
   });
   res.json({ success: true, data: revoked });
 });
+
+router.patch(
+  '/:id/devices/:deviceId',
+  requireSession,
+  requireMaster('change device access'),
+  (req, res) => {
+    const auth = authed(req);
+    if (auth.workspace.id !== req.params.id) {
+      res.status(403).json({ success: false, error: 'Session does not belong to this workspace' });
+      return;
+    }
+
+    const access = (req.body as { access?: unknown })?.access;
+    if (!isDeviceAccess(access)) {
+      res.status(400).json({ success: false, error: 'Choose full, upload, or view access' });
+      return;
+    }
+
+    const updated = workspaceService.setDeviceAccess(req.params.id, req.params.deviceId, access);
+    if (!updated) {
+      res.status(404).json({ success: false, error: 'Device not found or cannot be limited' });
+      return;
+    }
+
+    auditService.log('device_access_changed', {
+      workspaceId: req.params.id,
+      deviceId: updated.id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      detail: `${updated.name} set to ${access}`,
+    });
+    sseService.broadcast('workspace:device_access', {
+      workspaceId: req.params.id,
+      deviceId: updated.id,
+      access: updated.access,
+    });
+    res.json({ success: true, data: updated });
+  }
+);
 
 router.get('/:id/audit', requireSession, requireMaster('view the audit log'), (req, res) => {
   const auth = authed(req);

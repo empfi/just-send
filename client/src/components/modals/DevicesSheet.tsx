@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
-import type { AuditEntry, DeviceInfo, Notify } from '../../types';
+import type { AuditEntry, DeviceAccess, DeviceInfo, Notify } from '../../types';
 import { formatTimeAgo } from '../../utils';
 import { Icon } from '../Icon';
 import { Sheet } from '../Sheet';
@@ -23,6 +23,7 @@ const AUDIT_LABELS: Record<string, string> = {
   device_paired_with_code: 'Device paired with code',
   device_paired_with_qr: 'Device paired with QR',
   device_revoked: 'Device revoked',
+  device_access_changed: 'Device access changed',
   device_upgraded_to_key: 'Device upgraded to key',
   workspace_created: 'Workspace created',
   workspace_recovered: 'Workspace recovered',
@@ -41,6 +42,12 @@ function relativeTime(value: string): string {
   return label === 'Just now' ? 'just now' : label;
 }
 
+const ACCESS_LABELS: Record<DeviceAccess, string> = {
+  full: 'Full access',
+  upload: 'Upload only',
+  view: 'View only',
+};
+
 export function DevicesSheet({ open, workspaceId, isMaster, notify, onClose }: Props) {
   const [tab, setTab] = useState<'devices' | 'audit'>('devices');
   const [devices, setDevices] = useState<DeviceInfo[]>([]);
@@ -48,6 +55,7 @@ export function DevicesSheet({ open, workspaceId, isMaster, notify, onClose }: P
   const [loading, setLoading] = useState(false);
   const [auditLoading, setAuditLoading] = useState(false);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [savingAccess, setSavingAccess] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -103,6 +111,25 @@ export function DevicesSheet({ open, workspaceId, isMaster, notify, onClose }: P
   const deviceName = (id?: string): string => {
     if (!id) return 'Unknown device';
     return devices.find((device) => device.id === id)?.name ?? `${id.slice(0, 8)}…`;
+  };
+
+  const changeAccess = async (device: DeviceInfo, access: DeviceAccess) => {
+    if (!workspaceId || access === device.access) return;
+    setSavingAccess(device.id);
+    try {
+      const res = await api.setDeviceAccess(workspaceId, device.id, access);
+      if (res.success && res.data) {
+        const updated = res.data;
+        setDevices((current) => current.map((row) => (row.id === updated.id ? updated : row)));
+        notify(`${device.name}: ${ACCESS_LABELS[access]}`, 'success');
+      } else {
+        notify(res.error ?? 'Could not change access', 'error');
+      }
+    } catch {
+      notify('Could not change access', 'error');
+    } finally {
+      setSavingAccess(null);
+    }
   };
 
   const revoke = async (device: DeviceInfo) => {
@@ -169,10 +196,24 @@ export function DevicesSheet({ open, workspaceId, isMaster, notify, onClose }: P
                       {isSelf ? <span className="device-self-tag">This device</span> : null}
                     </div>
                     <div className="device-meta">
-                      {device.isMaster ? 'Master' : 'Connector'} · Last seen{' '}
+                      {device.isMaster ? 'Master' : ACCESS_LABELS[device.access]} · Last seen{' '}
                       {relativeTime(device.lastSeenAt)} · Added {relativeTime(device.authorizedAt)}
                     </div>
                   </div>
+                  {isMaster && !device.isMaster ? (
+                    <select
+                      className="select-input device-access-select"
+                      value={device.access}
+                      disabled={savingAccess === device.id}
+                      aria-label={`Access for ${device.name}`}
+                      title={`Access for ${device.name}`}
+                      onChange={(event) => void changeAccess(device, event.target.value as DeviceAccess)}
+                    >
+                      <option value="full">Full access</option>
+                      <option value="upload">Upload only</option>
+                      <option value="view">View only</option>
+                    </select>
+                  ) : null}
                   {isMaster && !isSelf ? (
                     <button
                       className="btn btn-subtle btn-icon device-revoke"

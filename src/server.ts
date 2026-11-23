@@ -12,7 +12,9 @@ import sseService from './services/sseService';
 import errorHandler from './middleware/errorHandler';
 import requestLogger from './middleware/requestLogger';
 import { securityHeaders, sameOriginGuard } from './middleware/security';
-import { requireSession, type AuthedRequest } from './middleware/auth';
+import { deviceAccessGuard } from './middleware/deviceAccess';
+import { prunePreviewCaches } from './utils/previewCache';
+import { attachSession, requireSession, type AuthedRequest } from './middleware/auth';
 import { printBanner } from './utils/logger';
 
 const app = express();
@@ -60,7 +62,11 @@ app.get('/api/events', requireSession, (req, res) => {
   sseService.addClient(res, auth.workspace.id);
 });
 
+// Sessions are created before this guard runs; everything after it is scoped by
+// the device's access level.
 app.use('/api', authRoutes);
+app.use('/api', attachSession);
+app.use('/api', deviceAccessGuard);
 app.use('/api', apiRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/workspaces', workspaceRoutes);
@@ -82,7 +88,11 @@ app.use((req, res, next) => {
 
 app.use(errorHandler);
 
+const CACHE_PRUNE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
 app.listen(PORT, HOST, async () => {
+  void prunePreviewCaches();
+  setInterval(() => void prunePreviewCaches(), CACHE_PRUNE_INTERVAL_MS).unref();
   await printBanner(PORT, HOST);
 });
 

@@ -4,12 +4,20 @@ import { Icon } from './Icon';
 interface MobileDockProps {
   tab: Tab;
   onTabChange: (tab: Tab) => void;
+  canUpload: boolean;
   onUpload: () => void;
   onCreateClip: () => void;
   onConnect: () => void;
 }
 
-export function MobileDock({ tab, onTabChange, onUpload, onCreateClip, onConnect }: MobileDockProps) {
+export function MobileDock({
+  tab,
+  onTabChange,
+  canUpload,
+  onUpload,
+  onCreateClip,
+  onConnect,
+}: MobileDockProps) {
   return (
     <aside className="mobile-bottom-dock">
       <button
@@ -26,13 +34,15 @@ export function MobileDock({ tab, onTabChange, onUpload, onCreateClip, onConnect
         <Icon name="clipboard" />
         <span>Clipboard</span>
       </button>
-      <button
-        className="mobile-upload-btn"
-        onClick={tab === 'files' ? onUpload : onCreateClip}
-        title={tab === 'files' ? 'Upload files' : 'Create snippet'}
-      >
-        <Icon name={tab === 'files' ? 'upload' : 'send'} />
-      </button>
+      {canUpload ? (
+        <button
+          className="mobile-upload-btn"
+          onClick={tab === 'files' ? onUpload : onCreateClip}
+          title={tab === 'files' ? 'Upload files' : 'Create snippet'}
+        >
+          <Icon name={tab === 'files' ? 'upload' : 'send'} />
+        </button>
+      ) : null}
       <button className="mobile-nav-btn" onClick={onConnect} title="Connect device">
         <Icon name="qrcode" />
         <span>Connect</span>

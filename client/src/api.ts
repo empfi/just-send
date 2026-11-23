@@ -3,6 +3,7 @@ import type {
   AuditEntry,
   Breadcrumb,
   Clip,
+  DeviceAccess,
   DeviceInfo,
   InstanceConfig,
   Item,
@@ -37,6 +38,7 @@ export interface AuthorizationResult {
   workspace: Workspace;
   deviceId: string;
   isMaster: boolean;
+  access?: DeviceAccess;
 }
 
 export interface CreateWorkspaceResult extends AuthorizationResult {
@@ -46,6 +48,7 @@ export interface CreateWorkspaceResult extends AuthorizationResult {
 export interface BootstrapResult {
   workspaceId: string | null;
   isMaster: boolean;
+  access: DeviceAccess;
 }
 
 function readJSON<T>(key: string, fallback: T): T {
@@ -93,6 +96,7 @@ function knownWorkspaces(): Workspace[] {
 
 let sessionWorkspaceId: string | null = null;
 let sessionIsMaster = false;
+let sessionAccess: DeviceAccess = 'full';
 
 function jsonInit(body: unknown, method = 'POST'): RequestInit {
   return {
@@ -153,8 +157,9 @@ async function ensureSession(workspaceId?: string, force = false): Promise<boole
     return false;
   }
 
-  const json = (await res.json()) as ApiResponse<{ isMaster?: boolean }>;
+  const json = (await res.json()) as ApiResponse<{ isMaster?: boolean; access?: DeviceAccess }>;
   sessionIsMaster = Boolean(json.data?.isMaster);
+  sessionAccess = json.data?.access ?? 'full';
   sessionWorkspaceId = target;
   setActiveWorkspace(target);
   return true;
@@ -209,10 +214,15 @@ async function bootstrap(): Promise<BootstrapResult> {
 
   const sessionRes = await fetch('/api/session', { credentials: 'same-origin' });
   if (sessionRes.ok) {
-    const json = (await sessionRes.json()) as ApiResponse<{ workspace: Workspace; isMaster?: boolean }>;
+    const json = (await sessionRes.json()) as ApiResponse<{
+      workspace: Workspace;
+      isMaster?: boolean;
+      access?: DeviceAccess;
+    }>;
     const workspaceId = json.data?.workspace.id ?? null;
     sessionWorkspaceId = workspaceId;
     sessionIsMaster = Boolean(json.data?.isMaster);
+    sessionAccess = json.data?.access ?? 'full';
     if (workspaceId) {
       setActiveWorkspace(workspaceId);
       const devices = getDevices();
@@ -224,6 +234,7 @@ async function bootstrap(): Promise<BootstrapResult> {
     return {
       workspaceId,
       isMaster: sessionIsMaster,
+      access: sessionAccess,
     };
   }
 
@@ -232,6 +243,7 @@ async function bootstrap(): Promise<BootstrapResult> {
   return {
     workspaceId: authenticated ? workspaceId : null,
     isMaster: sessionIsMaster,
+    access: sessionAccess,
   };
 }
 
@@ -246,6 +258,7 @@ async function registerDevice<T extends AuthorizationResult>(res: ApiResponse<T>
     setActiveWorkspace(res.data.workspace.id);
     sessionWorkspaceId = res.data.workspace.id;
     sessionIsMaster = Boolean(res.data.isMaster);
+    sessionAccess = res.data.access ?? 'full';
   }
   return res;
 }
@@ -259,12 +272,22 @@ export const api = {
   isMaster(): boolean {
     return sessionIsMaster;
   },
+  currentAccess(): DeviceAccess {
+    return sessionIsMaster ? 'full' : sessionAccess;
+  },
+  setCurrentAccess(access: DeviceAccess): void {
+    sessionAccess = access;
+  },
   currentDeviceId(workspaceId: string): string | null {
     return getDevices()[workspaceId]?.deviceId ?? null;
   },
 
   previewUrl(id: string): string {
     return `/api/files/${id}/preview`;
+  },
+
+  thumbUrl(id: string): string {
+    return `/api/files/${id}/thumb`;
   },
 
   downloadUrl(id: string): string {
@@ -303,6 +326,7 @@ export const api = {
     if (sessionWorkspaceId === workspaceId) {
       sessionWorkspaceId = null;
       sessionIsMaster = false;
+      sessionAccess = 'full';
     }
     try {
       await deleteDeviceKey(workspaceId);
@@ -393,6 +417,18 @@ export const api = {
     });
   },
 
+  async setDeviceAccess(
+    workspaceId: string,
+    deviceId: string,
+    access: DeviceAccess
+  ): Promise<ApiResponse<DeviceInfo>> {
+    await ensureSession(workspaceId);
+    return request<DeviceInfo>(
+      `/api/workspaces/${workspaceId}/devices/${deviceId}`,
+      jsonInit({ access }, 'PATCH')
+    );
+  },
+
   async getFiles(params: {
     folderId?: string | null;
     search?: string;
@@ -414,25 +450,39 @@ export const api = {
     return { ...json, breadcrumbs: json.breadcrumbs ?? [] };
   },
 
-  uploadFiles(
-    files: File[],
+  // One request per file keeps progress honest, lets a failed file be retried on
+  // its own, and makes cancelling immediate.
+  uploadFile(
+    file: File,
     folderId: string | null,
-    onProgress: (percent: number) => void
+    onProgress: (percent: number) => void,
+    signal?: AbortSignal
   ): Promise<ApiResponse<Item[]>> {
     return new Promise((resolve, reject) => {
       const formData = new FormData();
-      for (const file of files) formData.append('files', file);
+      formData.append('files', file);
       if (folderId) formData.append('folderId', folderId);
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', '/api/files/upload', true);
       xhr.withCredentials = true;
 
+      const detach = () => signal?.removeEventListener('abort', onAbort);
+      const onAbort = () => xhr.abort();
+      signal?.addEventListener('abort', onAbort);
+
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
       };
 
-      xhr.onload = () => {
+      xhr.onload = async () => {
+        detach();
+        if (xhr.status === 401) {
+          // Refresh before surfacing the failure so Retry has a working session.
+          await ensureSession(undefined, true).catch(() => false);
+          reject(new Error('Session expired. Retry the upload.'));
+          return;
+        }
         try {
           const json = JSON.parse(xhr.responseText) as ApiResponse<Item[]>;
           if (xhr.status >= 200 && xhr.status < 300) resolve(json);
@@ -441,7 +491,20 @@ export const api = {
           reject(new Error('Invalid server response'));
         }
       };
-      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.onerror = () => {
+        detach();
+        reject(new Error('Network error during upload'));
+      };
+      xhr.onabort = () => {
+        detach();
+        reject(new DOMException('Upload cancelled', 'AbortError'));
+      };
+
+      if (signal?.aborted) {
+        detach();
+        reject(new DOMException('Upload cancelled', 'AbortError'));
+        return;
+      }
       xhr.send(formData);
     });
   },
@@ -476,18 +539,52 @@ export const api = {
     return request('/api/files/batch-delete', jsonInit({ ids }));
   },
 
-  async batchDownload(ids: string[], archiveName?: string): Promise<void> {
-    const res = await fetch('/api/files/batch-download', jsonInit({ ids, archiveName }));
-    if (!res.ok) throw new Error('Failed to generate archive');
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = archiveName || `just-send-bundle-${Date.now()}.zip`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+  // A hidden iframe keeps an error response from replacing the app page with
+  // JSON, while the browser still streams the archive to disk with its own
+  // progress UI. The form body avoids URL length limits on large selections.
+  batchDownload(ids: string[], archiveName?: string): void {
+    if (ids.length === 0) throw new Error('No items selected');
+
+    const frameName = `just-send-download-${Date.now()}`;
+    const frame = document.createElement('iframe');
+    frame.name = frameName;
+    frame.title = 'ZIP download';
+    frame.tabIndex = -1;
+    frame.setAttribute('aria-hidden', 'true');
+    frame.style.display = 'none';
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/api/files/batch-download';
+    form.target = frameName;
+    form.style.display = 'none';
+
+    const idsInput = document.createElement('input');
+    idsInput.type = 'hidden';
+    idsInput.name = 'ids';
+    idsInput.value = ids.join(',');
+    form.appendChild(idsInput);
+
+    if (archiveName) {
+      const nameInput = document.createElement('input');
+      nameInput.type = 'hidden';
+      nameInput.name = 'name';
+      nameInput.value = archiveName;
+      form.appendChild(nameInput);
+    }
+
+    document.body.appendChild(frame);
+    document.body.appendChild(form);
+    // Submit after the frame's browsing context has registered its name, so the
+    // form always targets the frame and never falls back to the app page.
+    window.setTimeout(() => {
+      form.submit();
+      form.remove();
+    }, 0);
+
+    // Keep the frame around long enough for slow archives, then clean it up.
+    // Removing it earlier risks interrupting a download that is still streaming.
+    window.setTimeout(() => frame.remove(), 30 * 60_000);
   },
 
   async createFolder(name: string, parentFolderId: string | null): Promise<ApiResponse<Item>> {

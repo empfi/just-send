@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, MouseEvent as ReactMouseEvent } from 'react';
 import { api, type AuthorizationResult, type CreateWorkspaceResult } from './api';
-import type { Breadcrumb, Clip, InstanceConfig, Item, ModalKind, Tab, ToastKind, Workspace } from './types';
+import type {
+  Breadcrumb,
+  Clip,
+  DeviceAccess,
+  InstanceConfig,
+  Item,
+  ModalKind,
+  Tab,
+  ToastKind,
+  Workspace,
+} from './types';
 import { copyText, defaultDeviceName } from './utils';
 import { Icon } from './components/Icon';
 import { IconSprite } from './components/IconSprite';
@@ -9,7 +19,7 @@ import { Header } from './components/Header';
 import { MobileDock } from './components/MobileDock';
 import { FilesView, type ViewMode } from './components/FilesView';
 import { ClipsView } from './components/ClipsView';
-import { UploadDock, type UploadProgress } from './components/UploadDock';
+import { UploadDock, type UploadItem, type UploadQueue } from './components/UploadDock';
 import { CreateWorkspaceSheet } from './components/modals/CreateWorkspaceSheet';
 import { KeyphraseSheet } from './components/modals/KeyphraseSheet';
 import { RecoverSheet } from './components/modals/RecoverSheet';
@@ -30,6 +40,16 @@ interface ContextState {
   x: number;
   y: number;
   item: Item | null;
+}
+
+function summarizeUpload(items: UploadItem[]): number {
+  if (items.length === 0) return 0;
+  const finished = items.reduce((sum, item) => {
+    if (item.status === 'done') return sum + 1;
+    if (item.status === 'pending' || item.status === 'uploading') return sum + item.percent / 100;
+    return sum;
+  }, 0);
+  return Math.min(99, Math.round((finished / items.length) * 100));
 }
 
 const CONTEXT_WIDTH = 190;
@@ -122,8 +142,11 @@ export default function App() {
   const [qrScan, setQrScan] = useState<{ workspaceId: string; token: string } | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [shareIds, setShareIds] = useState<string[] | null>(null);
-  const [progress, setProgress] = useState<UploadProgress | null>(null);
-  const previewUrlRef = useRef<string | null>(null);
+  const [upload, setUpload] = useState<UploadQueue | null>(null);
+  const [access, setAccess] = useState<DeviceAccess>('full');
+  const uploadFilesMap = useRef(new Map<string, File>());
+  const uploadAbort = useRef<AbortController | null>(null);
+  const uploadDismissTimer = useRef<number | undefined>(undefined);
   const uploadRunId = useRef(0);
   const toastSeq = useRef(0);
   const reloadTimer = useRef<number | undefined>(undefined);
@@ -133,6 +156,9 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
+
+  const canUpload = access !== 'view';
+  const canManage = access === 'full';
 
   const notify = useCallback((message: string, kind: ToastKind = 'info') => {
     const id = ++toastSeq.current;
@@ -285,6 +311,7 @@ export default function App() {
       try {
         const boot = await api.bootstrap();
         setIsMaster(boot.isMaster);
+        setAccess(boot.access);
         if (boot.workspaceId) {
           setAuthenticated(true);
           setCurrentWsId(boot.workspaceId);
@@ -390,7 +417,11 @@ export default function App() {
     const source = new EventSource('/api/events');
     source.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as { type: string };
+        const data = JSON.parse(event.data) as {
+          type: string;
+          deviceId?: string;
+          access?: DeviceAccess;
+        };
         if (
           data.type === 'file:uploaded' ||
           data.type === 'item:created' ||
@@ -405,109 +436,181 @@ export default function App() {
         if (data.type === 'workspace:created' || data.type === 'workspace:device_added') {
           void loadWorkspaces();
         }
+        if (data.type === 'workspace:device_access' && data.deviceId && data.access) {
+          const mine = currentWsId ? api.currentDeviceId(currentWsId) : null;
+          if (mine && mine === data.deviceId) {
+            api.setCurrentAccess(data.access);
+            setAccess(data.access);
+            notify('This device access was updated', 'info');
+          }
+        }
       } catch {
       }
     };
     source.onerror = () => undefined;
     return () => source.close();
-  }, [authenticated, loadWorkspaces, currentWsId, scheduleReload]);
+  }, [authenticated, loadWorkspaces, currentWsId, scheduleReload, notify]);
 
   const clearUpload = useCallback(() => {
-    if (previewUrlRef.current) {
-      URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = null;
-    }
-    setProgress(null);
+    uploadRunId.current += 1;
+    uploadAbort.current?.abort();
+    uploadAbort.current = null;
+    window.clearTimeout(uploadDismissTimer.current);
+    uploadFilesMap.current.clear();
+    setUpload(null);
   }, []);
 
-  const startUpload = useCallback(
-    async (files: File[]) => {
-      if (!files.length || !currentWsId) return;
-      const first = files[0];
-      const canPreview = first.type.startsWith('image/') || first.type.startsWith('video/');
-      const previewUrl = canPreview ? URL.createObjectURL(first) : undefined;
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
-      previewUrlRef.current = previewUrl ?? null;
-      const previewKind: UploadProgress['previewKind'] = previewUrl
-        ? first.type.startsWith('video/')
-          ? 'video'
-          : 'image'
-        : undefined;
-      const runId = ++uploadRunId.current;
-      const finish = (delay: number) =>
-        window.setTimeout(() => {
-          if (uploadRunId.current === runId) clearUpload();
-        }, delay);
+  const patchUploadItems = useCallback((ids: string[], patch: (item: UploadItem) => UploadItem) => {
+    setUpload((current) => {
+      if (!current) return current;
+      const items = current.items.map((item) => (ids.includes(item.id) ? patch(item) : item));
+      return { ...current, items, percent: summarizeUpload(items) };
+    });
+  }, []);
 
-      setProgress({ fileName: first.name, count: files.length, percent: 0, status: 'uploading', previewUrl, previewKind });
-      // Small batches keep memory bounded on phones, and a few batches run at the
-      // same time so requests are not queued one round trip behind another.
-      const BATCH_SIZE = 4;
-      const CONCURRENCY = 3;
-      const batches: File[][] = [];
-      for (let index = 0; index < files.length; index += BATCH_SIZE) {
-        batches.push(files.slice(index, index + BATCH_SIZE));
-      }
-
-      const fractions = new Map<number, number>();
-      const failures: Error[] = [];
-      const uploaded: Item[] = [];
-      let nextBatch = 0;
-
-      const reportProgress = () => {
-        let finished = 0;
-        for (const fraction of fractions.values()) finished += fraction;
-        const percent = Math.min(99, Math.round((finished / batches.length) * 100));
-        setProgress((current) => (current ? { ...current, percent } : current));
-      };
-
-      const runBatch = async (batchIndex: number): Promise<void> => {
-        const batch = batches[batchIndex];
-        try {
-          const res = await api.uploadFiles(batch, folderId, (percent) => {
-            fractions.set(batchIndex, percent / 100);
-            reportProgress();
-          });
-          if (!res.success) throw new Error(res.error ?? 'Upload failed');
-          fractions.set(batchIndex, 1);
-          uploaded.push(...(res.data ?? []));
-          reportProgress();
-        } catch (err) {
-          failures.push(err as Error);
-        }
-      };
+  const runUploads = useCallback(
+    async (ids: string[], runId: number) => {
+      const controller = new AbortController();
+      uploadAbort.current = controller;
+      const CONCURRENCY = 2;
+      let cursor = 0;
+      let uploaded = 0;
+      let failed = 0;
 
       const worker = async (): Promise<void> => {
-        while (failures.length === 0 && nextBatch < batches.length) {
-          const batchIndex = nextBatch++;
-          await runBatch(batchIndex);
+        while (!controller.signal.aborted && cursor < ids.length) {
+          const id = ids[cursor++];
+          const file = uploadFilesMap.current.get(id);
+          if (!file) continue;
+
+          patchUploadItems([id], (item) => ({
+            ...item,
+            status: 'uploading',
+            percent: 0,
+            error: undefined,
+          }));
+
+          try {
+            const res = await api.uploadFile(
+              file,
+              folderId,
+              (percent) => {
+                if (uploadRunId.current !== runId) return;
+                patchUploadItems([id], (item) =>
+                  item.status === 'uploading' ? { ...item, percent } : item
+                );
+              },
+              controller.signal
+            );
+            if (!res.success) throw new Error(res.error ?? 'Upload failed');
+            uploaded += 1;
+            patchUploadItems([id], (item) => ({ ...item, status: 'done', percent: 100 }));
+          } catch (err) {
+            const aborted = (err as Error).name === 'AbortError' || controller.signal.aborted;
+            if (!aborted) failed += 1;
+            patchUploadItems([id], (item) => ({
+              ...item,
+              status: aborted ? 'cancelled' : 'error',
+              error: aborted ? undefined : (err as Error).message,
+            }));
+          }
         }
       };
 
-      try {
-        await Promise.all(
-          Array.from({ length: Math.min(CONCURRENCY, batches.length) }, () => worker())
-        );
-        if (failures.length > 0) throw failures[0];
-        setProgress((current) => (current ? { ...current, percent: 100, status: 'done' } : current));
-        notify(`Uploaded ${files.length} file${files.length === 1 ? '' : 's'}`, 'success');
-        scheduleReload();
-        finish(4200);
-      } catch (err) {
-        const message = (err as Error).message;
-        setProgress((current) => (current ? { ...current, status: 'error', error: message } : current));
-        notify(
-          uploaded.length
-            ? `Uploaded ${uploaded.length} of ${files.length} files. ${message}`
-            : message,
-          'error'
-        );
-        if (uploaded.length) scheduleReload();
-        finish(6000);
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker()));
+
+      // A newer run, or a dismiss, owns the dock now.
+      if (uploadRunId.current !== runId) return;
+
+      if (controller.signal.aborted) {
+        setUpload((current) => (current ? { ...current, status: 'cancelled' } : current));
+        notify('Upload cancelled', 'info');
+        if (uploaded > 0) scheduleReload();
+        return;
       }
+
+      if (failed > 0) {
+        setUpload((current) => (current ? { ...current, status: 'error' } : current));
+        notify(`Uploaded ${uploaded} of ${ids.length} files. ${failed} failed.`, 'error');
+        if (uploaded > 0) scheduleReload();
+        return;
+      }
+
+      setUpload((current) => (current ? { ...current, status: 'done', percent: 100 } : current));
+      notify(`Uploaded ${ids.length} file${ids.length === 1 ? '' : 's'}`, 'success');
+      scheduleReload();
+      window.clearTimeout(uploadDismissTimer.current);
+      uploadDismissTimer.current = window.setTimeout(() => {
+        // clearUpload also drops the retained File handles.
+        if (uploadRunId.current === runId) clearUpload();
+      }, 4200);
     },
-    [currentWsId, folderId, notify, clearUpload, scheduleReload]
+    [folderId, notify, patchUploadItems, scheduleReload, clearUpload]
   );
+
+  const startUpload = useCallback(
+    (files: File[]) => {
+      if (!files.length || !currentWsId) return;
+      uploadAbort.current?.abort();
+      window.clearTimeout(uploadDismissTimer.current);
+
+      // Files stay in a ref so retries reuse the original handles instead of
+      // holding them in render state.
+      const runId = ++uploadRunId.current;
+      const items: UploadItem[] = files.map((file, index) => ({
+        id: `${runId}-${index}-${file.lastModified}`,
+        name: file.name,
+        size: file.size,
+        percent: 0,
+        status: 'pending',
+      }));
+      const fileMap = new Map<string, File>();
+      items.forEach((item, index) => fileMap.set(item.id, files[index]));
+      uploadFilesMap.current = fileMap;
+
+      setUpload({ items, status: 'uploading', percent: 0 });
+      void runUploads(
+        items.map((item) => item.id),
+        runId
+      );
+    },
+    [currentWsId, runUploads]
+  );
+
+  const cancelUpload = useCallback(() => {
+    uploadAbort.current?.abort();
+    setUpload((current) =>
+      current
+        ? {
+            ...current,
+            status: 'cancelled',
+            items: current.items.map((item) =>
+              item.status === 'pending' || item.status === 'uploading'
+                ? { ...item, status: 'cancelled' }
+                : item
+            ),
+          }
+        : current
+    );
+  }, []);
+
+  const retryUpload = useCallback(() => {
+    if (!upload) return;
+    const ids = upload.items
+      .filter((item) => item.status === 'error' || item.status === 'cancelled')
+      .map((item) => item.id);
+    if (ids.length === 0) return;
+
+    const runId = ++uploadRunId.current;
+    setUpload({
+      ...upload,
+      status: 'uploading',
+      items: upload.items.map((item) =>
+        ids.includes(item.id) ? { ...item, status: 'pending', percent: 0, error: undefined } : item
+      ),
+    });
+    void runUploads(ids, runId);
+  }, [upload, runUploads]);
 
   const openPicker = () => fileInputRef.current?.click();
 
@@ -522,6 +625,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    if (!canUpload) return undefined;
     const onDragEnter = (event: DragEvent) => {
       event.preventDefault();
       dragDepth.current += 1;
@@ -554,7 +658,7 @@ export default function App() {
       window.removeEventListener('dragover', onDragOver);
       window.removeEventListener('drop', onDrop);
     };
-  }, [startUpload]);
+  }, [startUpload, canUpload]);
 
   const downloadItem = async (item: Item) => {
     const ready = await api.ensureSession(undefined, true);
@@ -616,9 +720,14 @@ export default function App() {
   };
 
   const batchDownload = async () => {
+    if (selected.size === 0) return;
     try {
+      if (!(await api.ensureSession())) {
+        notify('Could not refresh this session. Reconnect this device and try again.', 'error');
+        return;
+      }
       notify('Preparing ZIP download...', 'info');
-      await api.batchDownload(Array.from(selected));
+      api.batchDownload(Array.from(selected));
     } catch (err) {
       notify((err as Error).message, 'error');
     }
@@ -657,6 +766,7 @@ export default function App() {
     api.setActiveWorkspace(result.workspace.id);
     setAuthenticated(true);
     setIsMaster(result.isMaster);
+    setAccess(result.access ?? 'full');
     setKeyphrase(result.keyphrase);
     setModal('keyphrase');
     await loadWorkspaces();
@@ -667,6 +777,7 @@ export default function App() {
     api.setActiveWorkspace(result.workspace.id);
     setAuthenticated(true);
     setIsMaster(result.isMaster);
+    setAccess(result.access ?? 'full');
     setModal(null);
     setQrScan(null);
     if (window.location.pathname === '/pair' || window.location.search.includes('ws=')) {
@@ -755,6 +866,7 @@ export default function App() {
     api.setActiveWorkspace(id);
     setAuthenticated(true);
     setIsMaster(api.isMaster());
+    setAccess(api.currentAccess());
     setCurrentWsId(id);
     setFolderId(null);
     setSelected(new Set());
@@ -850,6 +962,8 @@ export default function App() {
           <FilesView
             items={items}
             loading={filesLoading && items.length === 0}
+            canUpload={canUpload}
+            canManage={canManage}
             breadcrumbs={breadcrumbs}
             folderId={folderId}
             sort={sort}
@@ -894,6 +1008,7 @@ export default function App() {
             <ClipsView
               clips={clips}
               loading={clipsLoading && clips.length === 0}
+              canEdit={canManage}
               onAdd={addClip}
               onDelete={deleteClip}
               onCopied={(ok) => notify(ok ? 'Snippet copied' : 'Unable to copy snippet', ok ? 'success' : 'error')}
@@ -908,13 +1023,14 @@ export default function App() {
         <MobileDock
           tab={tab}
           onTabChange={changeTab}
+          canUpload={canUpload}
           onUpload={openPicker}
           onCreateClip={() => setClipComposerOpen(true)}
           onConnect={openPair}
         />
       ) : null}
 
-      {authenticated && tab === 'files' ? (
+      {authenticated && tab === 'files' && canUpload ? (
         <button type="button" className="upload-fab" onClick={openPicker} aria-label="Upload files" title="Upload files">
           <Icon name="upload" className="icon" style={{ width: 20, height: 20 }} />
         </button>
@@ -938,7 +1054,12 @@ export default function App() {
         </div>
       </div>
 
-      <UploadDock progress={progress} onDismiss={clearUpload} />
+      <UploadDock
+        queue={upload}
+        onCancel={cancelUpload}
+        onRetry={retryUpload}
+        onDismiss={clearUpload}
+      />
 
       <CreateWorkspaceSheet
         open={modal === 'create-workspace'}
@@ -1037,42 +1158,50 @@ export default function App() {
                   <span>Copy direct link</span>
                 </button>
               )}
-              <button
-                className="context-item"
-                onClick={() => {
-                  setShareIds(contextShareIds);
-                  setContext(null);
-                }}
-              >
-                <Icon name="send" className="icon icon-sm" />
-                <span>{contextShareIds.length > 1 ? `Share ${contextShareIds.length} selected` : 'Share publicly'}</span>
-              </button>
-              <button className="context-item" onClick={() => { void renameItem(context.item!); setContext(null); }}>
-                <Icon name="edit" className="icon icon-sm" />
-                <span>Rename</span>
-              </button>
-              <div className="context-separator" />
-              <button className="context-item text-danger" onClick={() => { void deleteItem(context.item!); setContext(null); }}>
-                <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
-                <span>Delete</span>
-              </button>
+              {canManage ? (
+                <>
+                  <button
+                    className="context-item"
+                    onClick={() => {
+                      setShareIds(contextShareIds);
+                      setContext(null);
+                    }}
+                  >
+                    <Icon name="send" className="icon icon-sm" />
+                    <span>{contextShareIds.length > 1 ? `Share ${contextShareIds.length} selected` : 'Share publicly'}</span>
+                  </button>
+                  <button className="context-item" onClick={() => { void renameItem(context.item!); setContext(null); }}>
+                    <Icon name="edit" className="icon icon-sm" />
+                    <span>Rename</span>
+                  </button>
+                  <div className="context-separator" />
+                  <button className="context-item text-danger" onClick={() => { void deleteItem(context.item!); setContext(null); }}>
+                    <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
+                    <span>Delete</span>
+                  </button>
+                </>
+              ) : null}
             </>
           ) : (
             <>
-              <button className="context-item" onClick={() => { void createFolder(); setContext(null); }}>
-                <Icon name="folder-plus" className="icon icon-sm" />
-                <span>New folder</span>
-              </button>
-              <button className="context-item" onClick={() => { openPicker(); setContext(null); }}>
-                <Icon name="upload" className="icon icon-sm" />
-                <span>Upload files</span>
-              </button>
+              {canUpload ? (
+                <>
+                  <button className="context-item" onClick={() => { void createFolder(); setContext(null); }}>
+                    <Icon name="folder-plus" className="icon icon-sm" />
+                    <span>New folder</span>
+                  </button>
+                  <button className="context-item" onClick={() => { openPicker(); setContext(null); }}>
+                    <Icon name="upload" className="icon icon-sm" />
+                    <span>Upload files</span>
+                  </button>
+                </>
+              ) : null}
               <div className="context-separator" />
               <button className="context-item" onClick={() => { setSelected(new Set(items.map((i) => i.id))); setContext(null); }}>
                 <Icon name="check" className="icon icon-sm" />
                 <span>Select all</span>
               </button>
-              {selected.size > 0 ? (
+              {selected.size > 0 && canManage ? (
                 <button
                   className="context-item"
                   onClick={() => {

@@ -8,6 +8,8 @@ export type FileCategory =
   | 'code'
   | 'other';
 
+export type DeviceAccess = 'full' | 'upload' | 'view';
+
 export interface DevicePublicKey {
   kty: string;
   crv: string;
@@ -23,6 +25,7 @@ export interface DeviceRecord {
   fingerprints?: string[];
   userAgent?: string;
   isMaster: boolean;
+  access?: DeviceAccess;
   authorizedAt: string;
   lastSeenAt: string;
   revokedAt?: string;
@@ -76,6 +79,7 @@ export interface DeviceInfo {
   id: string;
   name: string;
   isMaster: boolean;
+  access: DeviceAccess;
   authorizedAt: string;
   lastSeenAt: string;
 }

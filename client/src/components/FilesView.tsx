@@ -13,6 +13,8 @@ export type ViewMode = 'grid' | 'list';
 interface FilesViewProps {
   items: Item[];
   loading: boolean;
+  canUpload: boolean;
+  canManage: boolean;
   breadcrumbs: Breadcrumb[];
   folderId: string | null;
   sort: string;
@@ -85,6 +87,8 @@ export function FilesView(props: FilesViewProps) {
   const {
     items,
     loading,
+    canUpload,
+    canManage,
     breadcrumbs,
     folderId,
     sort,
@@ -193,7 +197,7 @@ export function FilesView(props: FilesViewProps) {
       return (
         <div className="thumb-single">
           <img
-            src={api.previewUrl(folderImages[0])}
+            src={api.thumbUrl(folderImages[0])}
             className="thumb-single-backdrop"
             alt=""
             aria-hidden="true"
@@ -201,7 +205,7 @@ export function FilesView(props: FilesViewProps) {
             decoding="async"
           />
           <img
-            src={api.previewUrl(folderImages[0])}
+            src={api.thumbUrl(folderImages[0])}
             className="thumb-single-image"
             alt={item.originalName}
             loading="lazy"
@@ -215,7 +219,7 @@ export function FilesView(props: FilesViewProps) {
       return (
         <div className="thumb-collage" data-count={folderImages.length}>
           {folderImages.map((id) => (
-            <img key={id} src={api.previewUrl(id)} className="thumb-img" alt="" loading="lazy" decoding="async" />
+            <img key={id} src={api.thumbUrl(id)} className="thumb-img" alt="" loading="lazy" decoding="async" />
           ))}
         </div>
       );
@@ -242,7 +246,7 @@ export function FilesView(props: FilesViewProps) {
     if (!item.isFolder && item.category === 'image') {
       return (
         <img
-          src={api.previewUrl(item.id)}
+          src={api.thumbUrl(item.id)}
           className="thumb-img"
           alt={item.originalName}
           loading="lazy"
@@ -305,38 +309,40 @@ export function FilesView(props: FilesViewProps) {
           <SearchBox onSearchChange={onSearchChange} />
 
           <div className="view-controls">
-            <div className="new-menu-wrap" ref={newMenuRef}>
-              <button
-                className="btn btn-secondary"
-                title="Create new item"
-                style={{ height: 32, padding: '0 10px' }}
-                onClick={() => setNewMenuOpen((open) => !open)}
-                aria-haspopup="menu"
-                aria-expanded={newMenuOpen}
-              >
-                <svg className="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <span>New</span>
-                <Icon name="chevron-down" className="icon icon-sm" />
-              </button>
-              {newMenuOpen ? (
-                <div className="new-menu" role="menu">
-                  <button
-                    className="new-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setNewMenuOpen(false);
-                      onCreateFolder();
-                    }}
-                  >
-                    <Icon name="folder-plus" className="icon icon-sm" />
-                    <span>Folder</span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
+            {canUpload ? (
+              <div className="new-menu-wrap" ref={newMenuRef}>
+                <button
+                  className="btn btn-secondary"
+                  title="Create new item"
+                  style={{ height: 32, padding: '0 10px' }}
+                  onClick={() => setNewMenuOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={newMenuOpen}
+                >
+                  <svg className="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                  <span>New</span>
+                  <Icon name="chevron-down" className="icon icon-sm" />
+                </button>
+                {newMenuOpen ? (
+                  <div className="new-menu" role="menu">
+                    <button
+                      className="new-menu-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setNewMenuOpen(false);
+                        onCreateFolder();
+                      }}
+                    >
+                      <Icon name="folder-plus" className="icon icon-sm" />
+                      <span>Folder</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="view-controls-right">
               <select
@@ -383,7 +389,9 @@ export function FilesView(props: FilesViewProps) {
           <Icon name="folder" className="icon icon-lg" style={{ color: 'var(--text-muted)' }} />
           <div className="empty-state-title">This folder is empty</div>
           <div className="empty-state-desc">
-            Drop files here, choose files, or right-click to create a folder.
+            {canUpload
+              ? 'Drop files here, choose files, or right-click to create a folder.'
+              : 'Drop files in from a device with upload access.'}
           </div>
         </div>
       ) : view === 'grid' ? (
@@ -398,7 +406,7 @@ export function FilesView(props: FilesViewProps) {
                   dropTarget === item.id ? 'drag-target-over' : ''
                 }`}
                 data-id={item.id}
-                draggable
+                draggable={canManage}
                 onDragStart={(event) => startDrag(event, item)}
                 onDragEnd={() => {
                   setDraggingId(null);
@@ -463,13 +471,17 @@ export function FilesView(props: FilesViewProps) {
                     <button className="btn btn-subtle btn-icon" title={isFolder ? 'Download folder as ZIP' : 'Download file'} onClick={() => onDownload(item)}>
                       <Icon name="download" className="icon icon-sm" />
                     </button>
-                    <button className="btn btn-subtle btn-icon" title="Rename" onClick={() => onRename(item)}>
-                      <Icon name="edit" className="icon icon-sm" />
-                    </button>
+                    {canManage ? (
+                      <button className="btn btn-subtle btn-icon" title="Rename" onClick={() => onRename(item)}>
+                        <Icon name="edit" className="icon icon-sm" />
+                      </button>
+                    ) : null}
                   </div>
-                  <button className="btn btn-subtle btn-icon" title="Delete" onClick={() => onDelete(item)}>
-                    <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
-                  </button>
+                  {canManage ? (
+                    <button className="btn btn-subtle btn-icon" title="Delete" onClick={() => onDelete(item)}>
+                      <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
+                    </button>
+                  ) : null}
                 </div>
               </div>
             );
@@ -504,7 +516,7 @@ export function FilesView(props: FilesViewProps) {
                     className={`${isSelected ? 'selected' : ''} ${isFolder ? 'folder-row' : ''} ${
                       dropTarget === item.id ? 'drag-target-over' : ''
                     }`}
-                    draggable
+                    draggable={canManage}
                     onDragStart={(event) => startDrag(event, item)}
                     onDragEnd={() => {
                       setDraggingId(null);
@@ -568,9 +580,11 @@ export function FilesView(props: FilesViewProps) {
                         <button className="btn btn-subtle btn-icon" title={isFolder ? 'Download folder as ZIP' : 'Download file'} onClick={() => onDownload(item)}>
                           <Icon name="download" className="icon icon-sm" />
                         </button>
-                        <button className="btn btn-subtle btn-icon" title="Delete" onClick={() => onDelete(item)}>
-                          <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
-                        </button>
+                        {canManage ? (
+                          <button className="btn btn-subtle btn-icon" title="Delete" onClick={() => onDelete(item)}>
+                            <Icon name="trash" className="icon icon-sm" style={{ color: 'var(--status-negative)' }} />
+                          </button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -592,18 +606,22 @@ export function FilesView(props: FilesViewProps) {
             </button>
           </div>
           <div className="batch-actions">
-            <button className="btn btn-primary" onClick={onBatchShare}>
-              <Icon name="link" className="icon icon-sm" />
-              Share
-            </button>
+            {canManage ? (
+              <button className="btn btn-primary" onClick={onBatchShare}>
+                <Icon name="link" className="icon icon-sm" />
+                Share
+              </button>
+            ) : null}
             <button className="btn btn-secondary" onClick={onBatchDownload}>
               <Icon name="download" className="icon icon-sm" />
               <span className="batch-action-label">Download ZIP</span>
             </button>
-            <button className="btn btn-danger" onClick={onBatchDelete}>
-              <Icon name="trash" className="icon icon-sm" />
-              <span className="batch-action-label">Delete</span>
-            </button>
+            {canManage ? (
+              <button className="btn btn-danger" onClick={onBatchDelete}>
+                <Icon name="trash" className="icon icon-sm" />
+                <span className="batch-action-label">Delete</span>
+              </button>
+            ) : null}
           </div>
         </div>
       ) : null}

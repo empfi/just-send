@@ -1,12 +1,13 @@
 import express from 'express';
 import fs from 'fs';
 import mime from 'mime-types';
-import upload from '../middleware/upload';
+import upload, { markUploadCommitted, uploadCleanup } from '../middleware/upload';
 import fileService from '../services/fileService';
 import textClipService from '../services/textClipService';
 import { requireSession, authed } from '../middleware/auth';
 import { streamStoredFile } from '../utils/fileStream';
-import { heicPreviewPath, isHeic } from '../utils/heicPreview';
+import { imageVariant, PREVIEW_MAX_EDGE, THUMB_MAX_EDGE } from '../utils/imagePreview';
+import { sanitizeFilename } from '../utils/formatters';
 
 const router = express.Router();
 
@@ -69,7 +70,7 @@ router.post('/files/:id/move', requireSession, (req, res) => {
   }
 });
 
-router.post('/files/upload', requireSession, upload.array('files', 100), (req, res) => {
+router.post('/files/upload', requireSession, uploadCleanup, upload.array('files', 100), (req, res) => {
   try {
     const files = req.files as Express.Multer.File[] | undefined;
     if (!files || files.length === 0) {
@@ -80,6 +81,7 @@ router.post('/files/upload', requireSession, upload.array('files', 100), (req, r
     const auth = authed(req);
     const folderId = (req.body?.folderId as string | undefined) || null;
     const uploaded = fileService.addFiles(auth.workspace.id, files, folderId, auth.device.id);
+    markUploadCommitted(req);
 
     res.status(201).json({
       success: true,
@@ -139,24 +141,62 @@ router.get('/files/:id/preview', requireSession, async (req, res) => {
     }
 
     const contentType = file.mimeType || mime.lookup(file.originalName) || 'application/octet-stream';
-    if (isHeic(file.originalName, contentType)) {
-      try {
-        const jpegPath = await heicPreviewPath(file.fullPath, file.id);
-        await streamStoredFile(req, res, {
-          filePath: jpegPath,
-          contentType: 'image/jpeg',
-          name: file.originalName.replace(/\.(heic|heif)$/i, '.jpg'),
-          disposition: 'inline',
-          allowFraming: true,
-        });
-        return;
-      } catch (err) {
-        console.error('HEIC preview conversion failed:', err);
-      }
+    const variant = await imageVariant(file, PREVIEW_MAX_EDGE);
+    if (variant) {
+      await streamStoredFile(req, res, {
+        filePath: variant.filePath,
+        contentType: variant.contentType,
+        name: variant.name,
+        disposition: 'inline',
+        allowFraming: true,
+        cacheControl: 'private, max-age=604800',
+      });
+      return;
     }
     await streamStoredFile(req, res, {
       filePath: file.fullPath,
       contentType,
+      name: file.originalName,
+      disposition: 'inline',
+      allowFraming: true,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: (err as Error).message });
+  }
+});
+
+// Grid cards ask for this instead of the preview, so a folder of photos does not
+// pull full-size originals over the local network.
+router.get('/files/:id/thumb', requireSession, async (req, res) => {
+  try {
+    const auth = authed(req);
+    const file = fileService.getItemById(auth.workspace.id, req.params.id);
+    if (!file || file.isFolder || !file.fullPath) {
+      res.status(404).json({ success: false, error: 'File not found' });
+      return;
+    }
+
+    const variant = await imageVariant(file, THUMB_MAX_EDGE);
+    if (variant) {
+      await streamStoredFile(req, res, {
+        filePath: variant.filePath,
+        contentType: variant.contentType,
+        name: variant.name,
+        disposition: 'inline',
+        allowFraming: true,
+        cacheControl: 'private, max-age=604800',
+      });
+      return;
+    }
+
+    // Only images we deliberately leave alone (GIF, SVG) may stream here.
+    if (file.category !== 'image') {
+      res.status(404).json({ success: false, error: 'No thumbnail for this file' });
+      return;
+    }
+    await streamStoredFile(req, res, {
+      filePath: file.fullPath,
+      contentType: file.mimeType || mime.lookup(file.originalName) || 'application/octet-stream',
       name: file.originalName,
       disposition: 'inline',
       allowFraming: true,
@@ -193,11 +233,26 @@ router.delete('/files/:id', requireSession, (req, res) => {
   }
 });
 
+// The client posts this into a hidden iframe, so a failed session cannot replace
+// the page, and the browser streams the archive straight to disk.
 router.post('/files/batch-download', requireSession, (req, res) => {
   try {
-    const { ids, archiveName } = req.body as { ids?: string[]; archiveName?: string };
-    const name = archiveName ? `${archiveName}.zip` : `just-send-${Date.now()}.zip`;
-    fileService.streamZip(authed(req).workspace.id, ids ?? [], res, name);
+    const body = req.body as { ids?: unknown; name?: unknown } | undefined;
+    const raw = body?.ids;
+    const values = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
+    const ids = values
+      .map((id) => String(id).trim())
+      .filter(Boolean)
+      .slice(0, 1000);
+    if (ids.length === 0) {
+      res.status(400).json({ success: false, error: 'No items selected' });
+      return;
+    }
+
+    const requested = typeof body?.name === 'string' ? body.name.trim() : '';
+    const base = requested ? sanitizeFilename(requested).replace(/\.zip$/i, '').slice(0, 80) : '';
+    const name = `${base || `just-send-${Date.now()}`}.zip`;
+    fileService.streamZip(authed(req).workspace.id, ids, res, name);
   } catch (err) {
     res.status(500).json({ success: false, error: (err as Error).message });
   }

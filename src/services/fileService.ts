@@ -7,6 +7,8 @@ import archiver from 'archiver';
 import workspaceService from './workspaceService';
 import sseService from './sseService';
 import { formatBytes, getFileCategory, sanitizeFilename } from '../utils/formatters';
+import { clearPreviewCache } from '../utils/previewCache';
+import { isUploadActive } from '../utils/activeUploads';
 import type { FileCategory, StoredItem } from '../types';
 
 type MetadataMap = Record<string, StoredItem>;
@@ -59,6 +61,7 @@ class FileService {
       for (const file of files) {
         if (file === '.gitkeep' || knownNames.has(file)) continue;
         const filePath = path.join(uploadsDir, file);
+        if (isUploadActive(filePath)) continue;
         const stats = fs.statSync(filePath);
         if (!stats.isFile()) continue;
 
@@ -86,6 +89,8 @@ class FileService {
         const filePath = path.join(uploadsDir, m.storedName ?? '');
         if (!fs.existsSync(filePath)) {
           delete meta[id];
+          // The file vanished from disk, so its cached renders must go too.
+          void clearPreviewCache(`${workspaceId}-${id}`);
           changed = true;
         }
       }
@@ -375,6 +380,7 @@ class FileService {
       }
       delete meta[id];
       this.saveMetadata(workspaceId);
+      void clearPreviewCache(`${workspaceId}-${id}`);
       sseService.broadcast('item:deleted', { workspaceId, id, isFolder: true });
       return true;
     }
@@ -387,6 +393,9 @@ class FileService {
       }
       delete meta[id];
       this.saveMetadata(workspaceId);
+      // Old HEIC caches were keyed by item id alone, so purge that prefix too.
+      void clearPreviewCache(`${workspaceId}-${id}`);
+      void clearPreviewCache(id);
       sseService.broadcast('item:deleted', { workspaceId, id, isFolder: false });
       return true;
     } catch (err) {

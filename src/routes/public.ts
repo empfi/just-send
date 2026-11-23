@@ -4,7 +4,7 @@ import shareService, { type ShareRecord } from '../services/shareService';
 import fileService from '../services/fileService';
 import { authLimiter, shareDownloadLimiter, shareReadLimiter } from '../middleware/rateLimiter';
 import { streamStoredFile } from '../utils/fileStream';
-import { heicPreviewPath, isHeic } from '../utils/heicPreview';
+import { imageVariant, PREVIEW_MAX_EDGE, THUMB_MAX_EDGE } from '../utils/imagePreview';
 import { formatBytes } from '../utils/formatters';
 
 const router = express.Router();
@@ -124,24 +124,58 @@ router.get('/shares/:token/files/:itemId/preview', shareReadLimiter, async (req,
   }
 
   const contentType = item.mimeType || mime.lookup(item.originalName) || 'application/octet-stream';
-  if (isHeic(item.originalName, contentType)) {
-    try {
-      const jpegPath = await heicPreviewPath(item.fullPath, item.id);
-      await streamStoredFile(req, res, {
-        filePath: jpegPath,
-        contentType: 'image/jpeg',
-        name: item.originalName.replace(/\.(heic|heif)$/i, '.jpg'),
-        disposition: 'inline',
-        allowFraming: true,
-      });
-      return;
-    } catch (err) {
-      console.error('HEIC preview conversion failed:', err);
-    }
+  const variant = await imageVariant(item, PREVIEW_MAX_EDGE);
+  if (variant) {
+    await streamStoredFile(req, res, {
+      filePath: variant.filePath,
+      contentType: variant.contentType,
+      name: variant.name,
+      disposition: 'inline',
+      allowFraming: true,
+      cacheControl: 'private, max-age=604800',
+    });
+    return;
   }
   await streamStoredFile(req, res, {
     filePath: item.fullPath,
     contentType,
+    name: item.originalName,
+    disposition: 'inline',
+    allowFraming: true,
+  });
+});
+
+router.get('/shares/:token/files/:itemId/thumb', shareReadLimiter, async (req, res) => {
+  const share = loadShare(req, res);
+  if (!share) return;
+
+  const entry = share.files.find((file) => file.itemId === req.params.itemId);
+  const item = entry ? fileService.getItemById(share.workspaceId, entry.itemId) : null;
+  if (!item || item.isFolder || !item.fullPath) {
+    res.status(404).json({ success: false, error: 'File not found' });
+    return;
+  }
+
+  const variant = await imageVariant(item, THUMB_MAX_EDGE);
+  if (variant) {
+    await streamStoredFile(req, res, {
+      filePath: variant.filePath,
+      contentType: variant.contentType,
+      name: variant.name,
+      disposition: 'inline',
+      allowFraming: true,
+      cacheControl: 'private, max-age=604800',
+    });
+    return;
+  }
+
+  if (item.category !== 'image') {
+    res.status(404).json({ success: false, error: 'No thumbnail for this file' });
+    return;
+  }
+  await streamStoredFile(req, res, {
+    filePath: item.fullPath,
+    contentType: item.mimeType || mime.lookup(item.originalName) || 'application/octet-stream',
     name: item.originalName,
     disposition: 'inline',
     allowFraming: true,
