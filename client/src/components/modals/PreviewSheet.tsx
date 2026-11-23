@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { api } from '../../api';
 import type { Item } from '../../types';
 import { Icon } from '../Icon';
@@ -14,10 +15,42 @@ interface Props {
 
 const UNMOUNT_DELAY = 200;
 
+// Averages the photo down to one colour so the preview backdrop can take it on.
+function readTint(img: HTMLImageElement): string | null {
+  try {
+    const size = 24;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    if (!context) return null;
+    context.drawImage(img, 0, 0, size, size);
+    const { data } = context.getImageData(0, 0, size, size);
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let count = 0;
+    for (let index = 0; index < data.length; index += 4) {
+      if (data[index + 3] < 8) continue;
+      r += data[index];
+      g += data[index + 1];
+      b += data[index + 2];
+      count += 1;
+    }
+    if (!count) return null;
+    // Dim the wash so the photo and the white filename stay readable.
+    const dim = 0.78;
+    return `${Math.round((r / count) * dim)}, ${Math.round((g / count) * dim)}, ${Math.round((b / count) * dim)}`;
+  } catch {
+    return null;
+  }
+}
+
 export function PreviewSheet({ open, item, onClose }: Props) {
   const [text, setText] = useState('');
   const [loadingText, setLoadingText] = useState(false);
   const [imageReady, setImageReady] = useState(false);
+  const [tint, setTint] = useState<string | null>(null);
   const [mounted, setMounted] = useState(open);
 
   const isText =
@@ -28,6 +61,7 @@ export function PreviewSheet({ open, item, onClose }: Props) {
 
   useEffect(() => {
     setImageReady(false);
+    setTint(null);
     setText('');
     if (!open || !item || !isText) {
       setLoadingText(false);
@@ -92,6 +126,7 @@ export function PreviewSheet({ open, item, onClose }: Props) {
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
+      style={tint ? ({ '--preview-tint': tint } as CSSProperties) : undefined}
     >
       <button type="button" className="preview-close" onClick={onClose} aria-label="Close preview">
         <Icon name="x" className="icon icon-sm" />
@@ -101,10 +136,14 @@ export function PreviewSheet({ open, item, onClose }: Props) {
         {item.category === 'image' ? (
           <div className="preview-image-wrap">
             <img
+              key={item.id}
               src={previewUrl}
               className="preview-image"
               alt={item.originalName}
-              onLoad={() => setImageReady(true)}
+              onLoad={(event) => {
+                setImageReady(true);
+                setTint(readTint(event.currentTarget));
+              }}
               onError={() => setImageReady(true)}
             />
             {!imageReady ? <div className="skeleton preview-image-skeleton" /> : null}
@@ -147,9 +186,6 @@ export function PreviewSheet({ open, item, onClose }: Props) {
       </div>
 
       <div className="preview-bar">
-        <span className="preview-filename" title={item.originalName}>
-          {name}
-        </span>
         <a
           className="preview-download"
           href={api.downloadUrl(item.id)}
@@ -159,6 +195,9 @@ export function PreviewSheet({ open, item, onClose }: Props) {
         >
           <Icon name="download" className="icon icon-sm" />
         </a>
+        <span className="preview-filename" title={item.originalName}>
+          {name}
+        </span>
         {isPdf ? (
           <a className="preview-open-link" href={previewUrl} target="_blank" rel="noreferrer">
             Open in new tab
