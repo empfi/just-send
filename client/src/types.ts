@@ -29,6 +29,7 @@ export interface Item {
   uploadedAt: string;
   downloadCount: number;
   previewImageIds?: string[];
+  folderPath?: string;
 }
 
 export interface Breadcrumb {

@@ -6,6 +6,7 @@ import fileService from '../services/fileService';
 import textClipService from '../services/textClipService';
 import { requireSession, authed } from '../middleware/auth';
 import { streamStoredFile } from '../utils/fileStream';
+import { heicPreviewPath, isHeic } from '../utils/heicPreview';
 
 const router = express.Router();
 
@@ -138,6 +139,21 @@ router.get('/files/:id/preview', requireSession, async (req, res) => {
     }
 
     const contentType = file.mimeType || mime.lookup(file.originalName) || 'application/octet-stream';
+    if (isHeic(file.originalName, contentType)) {
+      try {
+        const jpegPath = await heicPreviewPath(file.fullPath, file.id);
+        await streamStoredFile(req, res, {
+          filePath: jpegPath,
+          contentType: 'image/jpeg',
+          name: file.originalName.replace(/\.(heic|heif)$/i, '.jpg'),
+          disposition: 'inline',
+          allowFraming: true,
+        });
+        return;
+      } catch (err) {
+        console.error('HEIC preview conversion failed:', err);
+      }
+    }
     await streamStoredFile(req, res, {
       filePath: file.fullPath,
       contentType,

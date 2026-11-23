@@ -216,9 +216,26 @@ class FileService {
       }
     }
 
+    // Search runs across the whole workspace, so each hit carries its folder path.
+    const foldersById = new Map(entries.filter((entry) => entry.isFolder).map((entry) => [entry.id, entry]));
+    const folderPathOf = (folderId: string | null): string | undefined => {
+      if (!folderId) return undefined;
+      const names: string[] = [];
+      let current = foldersById.get(folderId);
+      let guard = 0;
+      while (current && guard < 24) {
+        names.unshift(current.originalName);
+        current = current.folderId ? foldersById.get(current.folderId) : undefined;
+        guard += 1;
+      }
+      return names.length ? names.join(' / ') : undefined;
+    };
+
     list = list.map((item) => {
       const formattedSize = item.isFolder ? '--' : formatBytes(item.size);
-      if (!item.isFolder) return { ...item, formattedSize };
+      if (!item.isFolder) {
+        return q ? { ...item, formattedSize, folderPath: folderPathOf(item.folderId) } : { ...item, formattedSize };
+      }
       const previewImageIds = (previews.get(item.id) ?? []).map((child) => child.id);
       return { ...item, formattedSize, previewImageIds };
     });

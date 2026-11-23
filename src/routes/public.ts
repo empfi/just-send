@@ -4,6 +4,7 @@ import shareService, { type ShareRecord } from '../services/shareService';
 import fileService from '../services/fileService';
 import { authLimiter, shareDownloadLimiter, shareReadLimiter } from '../middleware/rateLimiter';
 import { streamStoredFile } from '../utils/fileStream';
+import { heicPreviewPath, isHeic } from '../utils/heicPreview';
 import { formatBytes } from '../utils/formatters';
 
 const router = express.Router();
@@ -123,6 +124,21 @@ router.get('/shares/:token/files/:itemId/preview', shareReadLimiter, async (req,
   }
 
   const contentType = item.mimeType || mime.lookup(item.originalName) || 'application/octet-stream';
+  if (isHeic(item.originalName, contentType)) {
+    try {
+      const jpegPath = await heicPreviewPath(item.fullPath, item.id);
+      await streamStoredFile(req, res, {
+        filePath: jpegPath,
+        contentType: 'image/jpeg',
+        name: item.originalName.replace(/\.(heic|heif)$/i, '.jpg'),
+        disposition: 'inline',
+        allowFraming: true,
+      });
+      return;
+    } catch (err) {
+      console.error('HEIC preview conversion failed:', err);
+    }
+  }
   await streamStoredFile(req, res, {
     filePath: item.fullPath,
     contentType,

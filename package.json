@@ -26,6 +26,7 @@
     "@noble/hashes": "^2.4.0",
     "archiver": "^7.0.1",
     "express": "^4.21.2",
+    "heic-convert": "^2.1.0",
     "mime-types": "^2.1.35",
     "multer": "^1.4.5-lts.1",
     "qrcode": "^1.5.4",

@@ -806,6 +806,13 @@ export default function App() {
     setContext({ x: event.clientX, y: event.clientY, item });
   };
 
+  // Right-clicking a selected item shares the whole selection, like a file manager.
+  const contextShareIds = context?.item
+    ? selected.has(context.item.id) && selected.size > 1
+      ? Array.from(selected)
+      : [context.item.id]
+    : [];
+
   const createDismissible = hasWorkspaces || workspaces.length > 0;
   const forceConnect =
     authChecked &&
@@ -862,6 +869,16 @@ export default function App() {
                 const next = new Set(current);
                 if (checked) next.add(id);
                 else next.delete(id);
+                return next;
+              })
+            }
+            onSelectMany={(ids, checked) =>
+              setSelected((current) => {
+                const next = new Set(current);
+                for (const id of ids) {
+                  if (checked) next.add(id);
+                  else next.delete(id);
+                }
                 return next;
               })
             }
@@ -1023,12 +1040,12 @@ export default function App() {
               <button
                 className="context-item"
                 onClick={() => {
-                  setShareIds([context.item!.id]);
+                  setShareIds(contextShareIds);
                   setContext(null);
                 }}
               >
                 <Icon name="send" className="icon icon-sm" />
-                <span>Share publicly</span>
+                <span>{contextShareIds.length > 1 ? `Share ${contextShareIds.length} selected` : 'Share publicly'}</span>
               </button>
               <button className="context-item" onClick={() => { void renameItem(context.item!); setContext(null); }}>
                 <Icon name="edit" className="icon icon-sm" />
@@ -1055,10 +1072,18 @@ export default function App() {
                 <Icon name="check" className="icon icon-sm" />
                 <span>Select all</span>
               </button>
-              <button className="context-item" onClick={() => { setReloadTick((tick) => tick + 1); setContext(null); }}>
-                <Icon name="layers" className="icon icon-sm" />
-                <span>Refresh</span>
-              </button>
+              {selected.size > 0 ? (
+                <button
+                  className="context-item"
+                  onClick={() => {
+                    setShareIds(Array.from(selected));
+                    setContext(null);
+                  }}
+                >
+                  <Icon name="send" className="icon icon-sm" />
+                  <span>Share {selected.size} selected</span>
+                </button>
+              ) : null}
             </>
           )}
         </div>

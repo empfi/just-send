@@ -3,7 +3,6 @@ import { api } from '../../api';
 import type { Item } from '../../types';
 import { Icon } from '../Icon';
 import { FileTypeIcon } from '../FileTypeIcon';
-import { Sheet } from '../Sheet';
 import { PreviewSkeleton } from '../Skeletons';
 import { canEmbedPdfInline, displayName } from '../../utils';
 
@@ -13,10 +12,13 @@ interface Props {
   onClose: () => void;
 }
 
+const UNMOUNT_DELAY = 200;
+
 export function PreviewSheet({ open, item, onClose }: Props) {
   const [text, setText] = useState('');
   const [loadingText, setLoadingText] = useState(false);
   const [imageReady, setImageReady] = useState(false);
+  const [mounted, setMounted] = useState(open);
 
   const isText =
     !!item &&
@@ -52,36 +54,50 @@ export function PreviewSheet({ open, item, onClose }: Props) {
     };
   }, [open, item, isText]);
 
-  if (!item) {
-    return (
-      <Sheet open={open} onClose={onClose} title="Preview" large showClose={false}>
-        {null}
-      </Sheet>
-    );
-  }
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setMounted(false), UNMOUNT_DELAY);
+    return () => window.clearTimeout(timer);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, onClose]);
+
+  if (!mounted || !item) return null;
 
   const previewUrl = api.previewUrl(item.id);
+  const isPdf = item.mimeType === 'application/pdf';
+  const name = displayName(item.originalName);
 
   return (
-    <Sheet
-      open={open}
-      onClose={onClose}
-      title={displayName(item.originalName)}
-      large
-      showClose={false}
-      headerAction={
-        <a
-          className="btn btn-primary btn-icon"
-          href={api.downloadUrl(item.id)}
-          download
-          title="Download"
-          aria-label="Download"
-        >
-          <Icon name="download" className="icon icon-sm" />
-        </a>
-      }
+    <div
+      className={`preview-overlay ${open ? 'active' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-label={name}
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
-      <div className="preview-stage" style={{ padding: 0 }}>
+      <button type="button" className="preview-close" onClick={onClose} aria-label="Close preview">
+        <Icon name="x" className="icon icon-sm" />
+      </button>
+
+      <div className="preview-canvas">
         {item.category === 'image' ? (
           <div className="preview-image-wrap">
             <img
@@ -99,31 +115,17 @@ export function PreviewSheet({ open, item, onClose }: Props) {
             Preview not supported in this browser
           </video>
         ) : item.category === 'audio' ? (
-          <div className="preview-audio-wrap">
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12 }}>{item.originalName}</div>
-            <audio controls autoPlay style={{ width: '100%', maxWidth: 360 }}>
-              <source src={previewUrl} type={item.mimeType} />
-              Audio preview not supported in this browser
-            </audio>
-          </div>
-        ) : item.mimeType === 'application/pdf' ? (
+          <audio controls autoPlay className="preview-audio">
+            <source src={previewUrl} type={item.mimeType} />
+            Audio preview not supported in this browser
+          </audio>
+        ) : isPdf ? (
           canEmbedPdfInline() ? (
             <iframe src={previewUrl} title={item.originalName} className="preview-pdf" />
           ) : (
-            <div className="preview-pdf-card">
-              <FileTypeIcon
-                name={item.originalName}
-                category={item.category}
-                className="preview-pdf-icon"
-              />
-              <div className="preview-pdf-name">{displayName(item.originalName)}</div>
-              <div className="preview-pdf-size tabular">{item.formattedSize} · PDF document</div>
-              <a
-                className="btn btn-primary"
-                href={previewUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
+            <div className="preview-fallback">
+              <FileTypeIcon name={item.originalName} category={item.category} className="preview-file-icon" />
+              <a className="btn btn-primary" href={previewUrl} target="_blank" rel="noreferrer">
                 Open PDF
               </a>
             </div>
@@ -137,46 +139,32 @@ export function PreviewSheet({ open, item, onClose }: Props) {
             <div className="preview-code-wrap">{text}</div>
           )
         ) : (
-          <div style={{ textAlign: 'center', padding: 32 }}>
-            <FileTypeIcon
-              name={item.originalName}
-              category={item.category}
-              className="preview-file-icon"
-            />
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>{item.originalName}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
-              Inline preview not available for this file type
-            </div>
-            <a href={api.downloadUrl(item.id)} className="btn btn-secondary" download>
-              Download file
-            </a>
+          <div className="preview-fallback">
+            <FileTypeIcon name={item.originalName} category={item.category} className="preview-file-icon" />
+            <div className="preview-fallback-text">Inline preview not available for this file type</div>
           </div>
         )}
       </div>
 
-      {item.mimeType === 'application/pdf' && canEmbedPdfInline() ? (
-        <div className="preview-pdf-actions">
-          <a className="preview-pdf-open" href={previewUrl} target="_blank" rel="noreferrer">
-            Open PDF in a new tab
+      <div className="preview-bar">
+        <span className="preview-filename" title={item.originalName}>
+          {name}
+        </span>
+        <a
+          className="preview-download"
+          href={api.downloadUrl(item.id)}
+          download
+          title="Download"
+          aria-label={`Download ${name}`}
+        >
+          <Icon name="download" className="icon icon-sm" />
+        </a>
+        {isPdf ? (
+          <a className="preview-open-link" href={previewUrl} target="_blank" rel="noreferrer">
+            Open in new tab
           </a>
-        </div>
-      ) : null}
-
-      <div className="preview-meta tabular">
-        <div>
-          <span className="preview-meta-label">Size:</span> {item.formattedSize}
-        </div>
-        <div>
-          <span className="preview-meta-label">Type:</span> {item.mimeType}
-        </div>
-        <div>
-          <span className="preview-meta-label">Uploaded:</span>{' '}
-          {new Date(item.uploadedAt).toLocaleString()}
-        </div>
-        <div>
-          <span className="preview-meta-label">Downloads:</span> {item.downloadCount || 0}
-        </div>
+        ) : null}
       </div>
-    </Sheet>
+    </div>
   );
 }

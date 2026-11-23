@@ -28,6 +28,7 @@ interface FilesViewProps {
   onDelete: (item: Item) => void;
   onMove: (itemId: string, targetFolderId: string | null) => void;
   onSelect: (id: string, checked: boolean) => void;
+  onSelectMany: (ids: string[], checked: boolean) => void;
   onSelectAll: (checked: boolean) => void;
   onClearSelection: () => void;
   onCreateFolder: () => void;
@@ -64,7 +65,7 @@ function SearchBox({ onSearchChange }: { onSearchChange: (value: string) => void
         type="text"
         id="searchInput"
         className="search-input"
-        placeholder="Search files"
+        placeholder="Search all files"
         value={draft}
         autoComplete="off"
         enterKeyHint="search"
@@ -99,6 +100,7 @@ export function FilesView(props: FilesViewProps) {
     onDelete,
     onMove,
     onSelect,
+    onSelectMany,
     onSelectAll,
     onClearSelection,
     onCreateFolder,
@@ -112,6 +114,29 @@ export function FilesView(props: FilesViewProps) {
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const newMenuRef = useRef<HTMLDivElement>(null);
+  const selectAnchor = useRef<string | null>(null);
+
+  // Ctrl/Cmd toggles one item, Shift takes the range from the last clicked one.
+  const handleSelectClick = (event: ReactMouseEvent, item: Item) => {
+    if (!event.metaKey && !event.ctrlKey && !event.shiftKey) return;
+    if ((event.target as HTMLElement).closest('button, a, input')) return;
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.shiftKey && selectAnchor.current) {
+      const ids = items.map((entry) => entry.id);
+      const from = ids.indexOf(selectAnchor.current);
+      const to = ids.indexOf(item.id);
+      if (from !== -1 && to !== -1) {
+        const [start, end] = from < to ? [from, to] : [to, from];
+        onSelectMany(ids.slice(start, end + 1), true);
+        return;
+      }
+    }
+
+    onSelect(item.id, !selected.has(item.id));
+    selectAnchor.current = item.id;
+  };
 
   useEffect(() => {
     if (!newMenuOpen) return undefined;
@@ -205,6 +230,11 @@ export function FilesView(props: FilesViewProps) {
           playsInline
           preload="metadata"
           aria-label={item.originalName}
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget;
+            // Nudge browsers that show a black frame until the playhead moves.
+            video.currentTime = Math.min(0.5, (video.duration || 1) * 0.1);
+          }}
         />
       );
     }
@@ -381,7 +411,11 @@ export function FilesView(props: FilesViewProps) {
                       onDrop: (event: ReactDragEvent) => dropOn(event, item.id),
                     }
                   : {})}
-                onContextMenu={(event) => onContextMenu(event, item)}
+                onContextMenu={(event) => {
+                  event.stopPropagation();
+                  onContextMenu(event, item);
+                }}
+                onClickCapture={(event) => handleSelectClick(event, item)}
               >
                 <div className="card-top">
                   <Checkbox
@@ -407,6 +441,7 @@ export function FilesView(props: FilesViewProps) {
                     </div>
                     <span className="card-time tabular">{formatTimeAgo(item.uploadedAt)}</span>
                   </div>
+                  {item.folderPath ? <div className="card-folder-path">{item.folderPath}</div> : null}
                   {isFolder ? null : (
                     <div className="card-meta tabular">
                       <span>{item.formattedSize}</span>
@@ -482,7 +517,11 @@ export function FilesView(props: FilesViewProps) {
                           onDrop: (event: ReactDragEvent) => dropOn(event, item.id),
                         }
                       : {})}
-                    onContextMenu={(event) => onContextMenu(event, item)}
+                    onContextMenu={(event) => {
+                      event.stopPropagation();
+                      onContextMenu(event, item);
+                    }}
+                    onClickCapture={(event) => handleSelectClick(event, item)}
                   >
                     <td style={{ width: 36 }}>
                       <Checkbox
@@ -506,6 +545,7 @@ export function FilesView(props: FilesViewProps) {
                         <span onClick={() => openItem(item)} style={{ cursor: 'pointer' }}>
                           {item.originalName}
                         </span>
+                        {item.folderPath ? <span className="card-folder-path">{item.folderPath}</span> : null}
                       </div>
                     </td>
                     <td className="tabular" style={{ color: 'var(--text-secondary)' }}>
