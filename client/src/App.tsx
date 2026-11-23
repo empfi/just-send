@@ -158,6 +158,7 @@ export default function App() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
+  const internalDrag = useRef(false);
 
   const canUpload = access !== 'view';
   const canManage = access === 'full';
@@ -248,12 +249,15 @@ export default function App() {
     }
   };
 
-  const openPreview = (item: Item) => {
+  const openPreview = (item: Item, replace = false) => {
     setPreviewItem(item);
     setModal('preview');
     setRouteFileId(item.id);
     const path = folderId ? `/folder/${folderId}/${item.id}` : `/file/${item.id}`;
-    if (window.location.pathname !== path) history.pushState(null, '', path);
+    if (window.location.pathname !== path) {
+      if (replace) history.replaceState(null, '', path);
+      else history.pushState(null, '', path);
+    }
   };
 
   const closePreview = () => {
@@ -261,6 +265,18 @@ export default function App() {
     setRouteFileId(null);
     const path = folderId ? `/folder/${folderId}` : '/files';
     if (window.location.pathname !== path) history.replaceState(null, '', path);
+  };
+
+  // The preview follows the same ordered files shown in the grid or list.
+  const previewFiles = items.filter((entry) => !entry.isFolder);
+  const previewIndex = previewItem
+    ? previewFiles.findIndex((entry) => entry.id === previewItem.id)
+    : -1;
+
+  const navigatePreview = (step: -1 | 1) => {
+    if (previewIndex < 0) return;
+    const target = previewFiles[previewIndex + step];
+    if (target) openPreview(target, true);
   };
 
   const loadWorkspaces = useCallback(async () => {
@@ -632,13 +648,26 @@ export default function App() {
 
   useEffect(() => {
     if (!canUpload) return undefined;
+    const onDragStart = () => {
+      // Drags that begin in the app are moves, not files coming from the OS.
+      internalDrag.current = true;
+      dragDepth.current = 0;
+      setDragActive(false);
+    };
+    const onDragEnd = () => {
+      internalDrag.current = false;
+      dragDepth.current = 0;
+      setDragActive(false);
+    };
     const onDragEnter = (event: DragEvent) => {
       event.preventDefault();
+      if (internalDrag.current) return;
       dragDepth.current += 1;
       if (event.dataTransfer?.types.includes('Files')) setDragActive(true);
     };
     const onDragLeave = (event: DragEvent) => {
       event.preventDefault();
+      if (internalDrag.current) return;
       dragDepth.current -= 1;
       if (dragDepth.current <= 0) {
         dragDepth.current = 0;
@@ -648,17 +677,24 @@ export default function App() {
     const onDragOver = (event: DragEvent) => event.preventDefault();
     const onDrop = (event: DragEvent) => {
       event.preventDefault();
+      const wasInternal = internalDrag.current;
+      internalDrag.current = false;
       dragDepth.current = 0;
       setDragActive(false);
+      if (wasInternal) return;
       const files = Array.from(event.dataTransfer?.files ?? []);
       if (files.length) void startUpload(files);
     };
 
+    window.addEventListener('dragstart', onDragStart, true);
+    window.addEventListener('dragend', onDragEnd, true);
     window.addEventListener('dragenter', onDragEnter);
     window.addEventListener('dragleave', onDragLeave);
     window.addEventListener('dragover', onDragOver);
     window.addEventListener('drop', onDrop);
     return () => {
+      window.removeEventListener('dragstart', onDragStart, true);
+      window.removeEventListener('dragend', onDragEnd, true);
       window.removeEventListener('dragenter', onDragEnter);
       window.removeEventListener('dragleave', onDragLeave);
       window.removeEventListener('dragover', onDragOver);
@@ -1108,7 +1144,15 @@ export default function App() {
           onAuthorized={handleAuthorized}
         />
       ) : null}
-      <PreviewSheet open={modal === 'preview'} item={previewItem} onClose={closePreview} />
+      <PreviewSheet
+        open={modal === 'preview'}
+        item={previewItem}
+        onClose={closePreview}
+        hasPrevious={previewIndex > 0}
+        hasNext={previewIndex >= 0 && previewIndex < previewFiles.length - 1}
+        onPrevious={() => navigatePreview(-1)}
+        onNext={() => navigatePreview(1)}
+      />
       <ShareSheet
         open={shareIds !== null}
         itemIds={shareIds ?? []}

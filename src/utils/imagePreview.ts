@@ -5,9 +5,9 @@ import { heicPreviewPath, isHeic } from './heicPreview';
 import { IMAGE_CACHE_DIR, cachePrefix } from './previewCache';
 
 export const THUMB_MAX_EDGE = 480;
-// The preview is capped at 1400 CSS px, so 2000 keeps ample detail without
-// making every first open wait on a 12 MP decode and a multi-megabyte transfer.
-export const PREVIEW_MAX_EDGE = 2000;
+// The preview is capped at 1400 CSS px, so 1600 keeps detail without making
+// every first open wait on a larger decode and a heavier transfer.
+export const PREVIEW_MAX_EDGE = 1600;
 
 // Animated GIFs and SVGs lose too much from a static re-encode, so they keep
 // streaming as-is. Everything else becomes a WebP sized for its job.
@@ -80,11 +80,14 @@ export async function resizedImagePath(
 
     await fs.promises.mkdir(IMAGE_CACHE_DIR, { recursive: true });
     const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
+    const thumb = maxEdge <= THUMB_MAX_EDGE;
     try {
       await sharp(filePath, { failOn: 'none', pages: 1 })
         .rotate()
         .resize({ width: maxEdge, height: maxEdge, fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: maxEdge <= THUMB_MAX_EDGE ? 74 : 80 })
+        // Lower effort roughly halves preview encoding time with no visible loss
+        // at this size. Thumbnails keep the slower, slightly smaller encode.
+        .webp(thumb ? { quality: 74 } : { quality: 80, effort: 2 })
         .toFile(temp);
       await fs.promises.rename(temp, target);
     } catch (err) {

@@ -120,27 +120,49 @@ export function FilesView(props: FilesViewProps) {
   const newMenuRef = useRef<HTMLDivElement>(null);
   const selectAnchor = useRef<string | null>(null);
 
-  // Ctrl/Cmd toggles one item, Shift takes the range from the last clicked one.
+  // Ctrl/Cmd toggles one item. Shift extends from the last checkbox click, or
+  // from the last modified card click, across the current order.
+  const selectRange = (item: Item): boolean => {
+    if (!selectAnchor.current) return false;
+    const ids = items.map((entry) => entry.id);
+    const from = ids.indexOf(selectAnchor.current);
+    const to = ids.indexOf(item.id);
+    if (from === -1 || to === -1) return false;
+    const [start, end] = from < to ? [from, to] : [to, from];
+    onSelectMany(ids.slice(start, end + 1), true);
+    return true;
+  };
+
   const handleSelectClick = (event: ReactMouseEvent, item: Item) => {
+    const target = event.target as HTMLElement;
+    const clickedCheckbox = Boolean(target.closest('.checkbox'));
+
+    if (clickedCheckbox) {
+      if (event.shiftKey && selectRange(item)) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+      }
+      // Let the checkbox toggle itself, but remember where a later Shift starts.
+      selectAnchor.current = item.id;
+      return;
+    }
+
     if (!event.metaKey && !event.ctrlKey && !event.shiftKey) return;
-    if ((event.target as HTMLElement).closest('button, a, input')) return;
+    if (target.closest('button, a, input')) return;
     event.preventDefault();
     event.stopPropagation();
 
-    if (event.shiftKey && selectAnchor.current) {
-      const ids = items.map((entry) => entry.id);
-      const from = ids.indexOf(selectAnchor.current);
-      const to = ids.indexOf(item.id);
-      if (from !== -1 && to !== -1) {
-        const [start, end] = from < to ? [from, to] : [to, from];
-        onSelectMany(ids.slice(start, end + 1), true);
-        return;
-      }
-    }
+    if (event.shiftKey && selectRange(item)) return;
 
     onSelect(item.id, !selected.has(item.id));
     selectAnchor.current = item.id;
   };
+
+  // A cleared selection should not leave an invisible range anchor behind.
+  useEffect(() => {
+    if (selected.size === 0) selectAnchor.current = null;
+  }, [selected]);
 
   useEffect(() => {
     if (!newMenuOpen) return undefined;

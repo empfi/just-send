@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import type { CSSProperties, TouchEvent as ReactTouchEvent } from 'react';
 import { api } from '../../api';
 import type { Item } from '../../types';
 import { Icon } from '../Icon';
@@ -11,6 +11,10 @@ interface Props {
   open: boolean;
   item: Item | null;
   onClose: () => void;
+  onPrevious?: () => void;
+  onNext?: () => void;
+  hasPrevious?: boolean;
+  hasNext?: boolean;
 }
 
 const UNMOUNT_DELAY = 280;
@@ -46,13 +50,24 @@ function readTint(img: HTMLImageElement): string | null {
   }
 }
 
-export function PreviewSheet({ open, item, onClose }: Props) {
+export function PreviewSheet({
+  open,
+  item,
+  onClose,
+  onPrevious,
+  onNext,
+  hasPrevious = false,
+  hasNext = false,
+}: Props) {
   const [text, setText] = useState('');
   const [loadingText, setLoadingText] = useState(false);
   const [imageReady, setImageReady] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [tint, setTint] = useState<string | null>(null);
   const [mounted, setMounted] = useState(open);
+  const touchStart = useRef<{ x: number; y: number; at: number } | null>(null);
+  const swipeConsumed = useRef(false);
+  const swipeResetTimer = useRef<number | undefined>(undefined);
 
   const isText =
     !!item &&
@@ -60,10 +75,15 @@ export function PreviewSheet({ open, item, onClose }: Props) {
       item.mimeType.startsWith('text/') ||
       /\.(txt|json|md)$/i.test(item.originalName));
 
-  useEffect(() => {
+  // Reset before paint so moving to another file never flashes the old image.
+  useLayoutEffect(() => {
+    if (!open) return;
     setImageReady(false);
     setImageError(false);
     setTint(null);
+  }, [open, item?.id]);
+
+  useEffect(() => {
     setText('');
     if (!open || !item || !isText) {
       setLoadingText(false);
@@ -104,22 +124,80 @@ export function PreviewSheet({ open, item, onClose }: Props) {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('input, textarea, select, video, audio, iframe, [contenteditable="true"]')) return;
+      if (event.key === 'ArrowLeft' && hasPrevious && onPrevious) {
+        event.preventDefault();
+        onPrevious();
+      } else if (event.key === 'ArrowRight' && hasNext && onNext) {
+        event.preventDefault();
+        onNext();
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [open, onClose]);
+  }, [open, onClose, onPrevious, onNext, hasPrevious, hasNext]);
+
+  const startSwipe = (event: ReactTouchEvent<HTMLDivElement>) => {
+    if (event.touches.length !== 1) {
+      touchStart.current = null;
+      return;
+    }
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('button, a, input, textarea, select, video, audio, iframe, .preview-bar')) {
+      touchStart.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    touchStart.current = { x: touch.clientX, y: touch.clientY, at: Date.now() };
+  };
+
+  const finishSwipe = (event: ReactTouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || event.changedTouches.length === 0) return;
+    const touch = event.changedTouches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const elapsed = Date.now() - start.at;
+    if (elapsed > 800 || Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.15) return;
+
+    // A swipe can synthesize a mousedown on the backdrop. Keep that from
+    // dismissing the preview after the file has changed.
+    swipeConsumed.current = true;
+    window.clearTimeout(swipeResetTimer.current);
+    swipeResetTimer.current = window.setTimeout(() => {
+      swipeConsumed.current = false;
+    }, 450);
+
+    if (dx < 0) {
+      if (hasNext && onNext) onNext();
+    } else if (hasPrevious && onPrevious) {
+      onPrevious();
+    }
+  };
+
+  const cancelSwipe = () => {
+    touchStart.current = null;
+  };
 
   if (!mounted || !item) return null;
 
   const previewUrl = api.previewUrl(item.id);
-  // The versioned image URL skips previews cached at the old 2400 px cap.
-  const imagePreviewUrl = `${previewUrl}?v=2`;
+  // The versioned image URL skips previews cached at the old 2000 px cap.
+  const imagePreviewUrl = `${previewUrl}?v=3`;
   const isPdf = item.mimeType === 'application/pdf';
   const name = displayName(item.originalName);
+  const canGoPrevious = Boolean(hasPrevious && onPrevious);
+  const canGoNext = Boolean(hasNext && onNext);
 
   return (
     <div
@@ -128,13 +206,45 @@ export function PreviewSheet({ open, item, onClose }: Props) {
       aria-modal="true"
       aria-label={name}
       onMouseDown={(event) => {
+        if (swipeConsumed.current) {
+          swipeConsumed.current = false;
+          return;
+        }
         if (event.target === event.currentTarget) onClose();
       }}
+      onTouchStart={startSwipe}
+      onTouchEnd={finishSwipe}
+      onTouchCancel={cancelSwipe}
       style={tint ? ({ '--preview-tint': tint } as CSSProperties) : undefined}
     >
       <button type="button" className="preview-close" onClick={onClose} aria-label="Close preview">
         <Icon name="x" className="icon icon-sm" />
       </button>
+
+      {canGoPrevious || canGoNext ? (
+        <>
+          <button
+            type="button"
+            className="preview-nav preview-nav-prev"
+            onClick={onPrevious}
+            disabled={!canGoPrevious}
+            aria-label="Previous file"
+            title="Previous file"
+          >
+            <Icon name="chevron-right" className="icon icon-sm" />
+          </button>
+          <button
+            type="button"
+            className="preview-nav preview-nav-next"
+            onClick={onNext}
+            disabled={!canGoNext}
+            aria-label="Next file"
+            title="Next file"
+          >
+            <Icon name="chevron-right" className="icon icon-sm" />
+          </button>
+        </>
+      ) : null}
 
       <div className="preview-canvas">
         {item.category === 'image' ? (
@@ -143,6 +253,7 @@ export function PreviewSheet({ open, item, onClose }: Props) {
             aria-busy={!imageReady}
           >
             <img
+              key={`thumb-${item.id}`}
               src={api.thumbUrl(item.id)}
               className="preview-image preview-image-placeholder"
               alt=""
@@ -195,18 +306,18 @@ export function PreviewSheet({ open, item, onClose }: Props) {
             ) : null}
           </div>
         ) : item.category === 'video' ? (
-          <video controls autoPlay playsInline className="preview-video">
+          <video key={item.id} controls autoPlay playsInline className="preview-video">
             <source src={previewUrl} type={item.mimeType} />
             Preview not supported in this browser
           </video>
         ) : item.category === 'audio' ? (
-          <audio controls autoPlay className="preview-audio">
+          <audio key={item.id} controls autoPlay className="preview-audio">
             <source src={previewUrl} type={item.mimeType} />
             Audio preview not supported in this browser
           </audio>
         ) : isPdf ? (
           canEmbedPdfInline() ? (
-            <iframe src={previewUrl} title={item.originalName} className="preview-pdf" />
+            <iframe key={item.id} src={previewUrl} title={item.originalName} className="preview-pdf" />
           ) : (
             <div className="preview-fallback">
               <FileTypeIcon name={item.originalName} category={item.category} className="preview-file-icon" />
